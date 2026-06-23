@@ -650,27 +650,43 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
   text-decoration: underline;
 }
 
+/* Layer / z / ATT / MLP flow diagram — responsive across 640px & 960px breakpoints */
+.lig-flow-wrap {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+  margin-top: 1.25rem;
+  overflow: hidden;
+}
+
 .lig-flow {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem 0.4rem;
-  margin: 1.25rem auto 0;
-  padding: 1rem 1.1rem;
+  gap: clamp(0.35rem, 0.25rem + 0.45vw, 0.55rem) clamp(0.3rem, 0.2rem + 0.35vw, 0.5rem);
+  margin: 0;
+  padding: clamp(0.85rem, 0.75rem + 0.5vw, 1.1rem) clamp(0.75rem, 0.55rem + 0.8vw, 1.15rem);
+  width: fit-content;
   max-width: 100%;
+  box-sizing: border-box;
   background: #fff;
   border: 1px solid var(--lig-line);
   border-radius: var(--lig-radius);
   box-shadow: 0 2px 12px rgba(15, 26, 28, 0.04);
+  transition: gap 0.22s ease, padding 0.22s ease;
 }
 
 .lig-flow-node {
-  padding: 0.5rem 0.75rem;
+  padding: clamp(0.42rem, 0.38rem + 0.2vw, 0.5rem) clamp(0.58rem, 0.5rem + 0.35vw, 0.75rem);
   border-radius: 6px;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: clamp(0.78rem, 0.72rem + 0.28vw, 0.85rem);
+  line-height: 1.25;
   white-space: nowrap;
+  text-align: center;
+  flex-shrink: 0;
+  transition: font-size 0.22s ease, padding 0.22s ease;
 }
 
 .lig-flow-node--layer {
@@ -685,13 +701,15 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.45rem;
-  padding: 0.55rem 0.65rem 0.6rem;
-  min-width: min(100%, 14rem);
+  gap: clamp(0.35rem, 0.3rem + 0.2vw, 0.45rem);
+  padding: clamp(0.48rem, 0.42rem + 0.25vw, 0.6rem) clamp(0.52rem, 0.45rem + 0.35vw, 0.65rem);
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 1;
 }
 
 .lig-flow-layer-title {
-  font-size: 0.85rem;
+  font-size: clamp(0.78rem, 0.72rem + 0.28vw, 0.85rem);
   font-weight: 700;
   text-align: center;
   line-height: 1.2;
@@ -700,10 +718,10 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
 
 .lig-flow-layer-inner {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem 0.3rem;
+  gap: clamp(0.28rem, 0.22rem + 0.25vw, 0.35rem) clamp(0.24rem, 0.18rem + 0.2vw, 0.3rem);
 }
 
 .lig-flow-node--module {
@@ -714,9 +732,12 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
 
 .lig-flow-var {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: clamp(0.82rem, 0.76rem + 0.3vw, 0.9rem);
   color: var(--lig-ink);
   white-space: nowrap;
+  text-align: center;
+  flex-shrink: 0;
+  transition: font-size 0.22s ease;
 }
 
 .lig-flow-var sup {
@@ -731,22 +752,65 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
 }
 
 .lig-flow-arrow {
+  flex-shrink: 0;
   color: var(--lig-muted);
-  font-size: 1.05rem;
+  font-size: 0;
   font-weight: 700;
   line-height: 1;
+  user-select: none;
 }
 
+.lig-flow-arrow::before {
+  content: "→";
+  font-size: clamp(0.95rem, 0.88rem + 0.25vw, 1.05rem);
+  line-height: 1;
+  transition: transform 0.22s ease;
+}
+
+/* Tablet / medium: compact horizontal with graceful wrap */
+@media (max-width: 960px) {
+  .lig-flow {
+    flex-wrap: wrap;
+    row-gap: 0.55rem;
+  }
+
+  .lig-flow-node--layer-block {
+    flex-basis: auto;
+  }
+}
+
+/* Narrow / mobile: vertical stack, down arrows, centered labels */
 @media (max-width: 640px) {
   .lig-flow {
     flex-direction: column;
-    align-items: stretch;
+    flex-wrap: nowrap;
+    align-items: center;
+    width: 100%;
+    max-width: min(18rem, 100%);
+    row-gap: 0.45rem;
+    padding: 1rem 0.85rem;
   }
-  .lig-flow-arrow {
-    align-self: center;
+
+  .lig-flow-node,
+  .lig-flow-var {
+    width: auto;
+    max-width: 100%;
   }
+
   .lig-flow-node--layer-block {
     width: 100%;
+    max-width: 14.5rem;
+    align-self: center;
+  }
+
+  .lig-flow-layer-inner {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    row-gap: 0.4rem;
+  }
+
+  .lig-flow-arrow::before {
+    content: "↓";
   }
 }
 
