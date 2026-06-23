@@ -650,7 +650,7 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
   text-decoration: underline;
 }
 
-/* Layer / z / ATT / MLP flow diagram — horizontal desktop, vertical stack on mobile */
+/* Layer / z / ATT / MLP flow diagram — responsive across 768px & 960px breakpoints */
 .lig-flow-wrap {
   display: flex;
   justify-content: center;
@@ -765,6 +765,18 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
   font-size: clamp(0.95rem, 0.88rem + 0.25vw, 1.05rem);
   line-height: 1;
   transition: transform 0.22s ease;
+}
+
+/* Tablet / medium: compact horizontal with graceful wrap */
+@media (max-width: 960px) {
+  .lig-flow {
+    flex-wrap: wrap;
+    row-gap: 0.55rem;
+  }
+
+  .lig-flow-node--layer-block {
+    flex-basis: auto;
+  }
 }
 
 /* Mobile / narrow: vertical stack, down arrows, centered labels */
