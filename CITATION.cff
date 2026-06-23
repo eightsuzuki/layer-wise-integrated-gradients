@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: "LIG: Layer-wise Integrated Gradients for Within-Layer Flow Analysis in Transformers"
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Suzuki
+    given-names: Eight
+  - family-names: Hino
+    given-names: Hideitsu
+  - family-names: Murata
+    given-names: Noboru
+repository-code: "https://github.com/eightsuzuki/layer-wise-integrated-gradients"
+license: MIT
+preferred-citation:
+  type: article
+  title: "LIG: Layer-wise Integrated Gradients for Within-Layer Flow Analysis in Transformers"
+  authors:
+    - family-names: Suzuki
+      given-names: Eight
+    - family-names: Hino
+      given-names: Hideitsu
+    - family-names: Murata
+      given-names: Noboru
+  year: 2026
+  identifiers:
+    - type: arxiv
+      value: "2606.21564"

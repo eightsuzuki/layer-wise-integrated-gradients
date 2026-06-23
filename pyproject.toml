@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "layer-wise-integrated-gradients"
+version = "0.1.0"
+description = "Layer-wise Integrated Gradients (LIG) for within-layer flow analysis in Transformers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Eight Suzuki" },
+    { name = "Hideitsu Hino" },
+    { name = "Noboru Murata" },
+]
+keywords = [
+    "transformers",
+    "explainability",
+    "integrated-gradients",
+    "lig",
+    "attention",
+    "bert",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=2.0.0",
+    "captum",
+    "transformers>=4.21.0,<5.0.0",
+    "tokenizers>=0.13.0",
+    "lightning",
+    "pandas",
+    "joblib",
+    "pyyaml>=6.0",
+    "scipy>=1.10.0",
+]
+
+[project.optional-dependencies]
+demo = ["streamlit>=1.28.0"]
+reproduce = ["openpyxl>=3.1.0"]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "build>=1.0.0",
+    "twine>=5.0.0",
+]
+
+[project.scripts]
+lig = "lig.cli:main"
+
+[project.urls]
+Homepage = "https://eightsuzuki.github.io/layer-wise-integrated-gradients/"
+Documentation = "https://eightsuzuki.github.io/layer-wise-integrated-gradients/"
+Repository = "https://github.com/eightsuzuki/layer-wise-integrated-gradients"
+Issues = "https://github.com/eightsuzuki/layer-wise-integrated-gradients/issues"
+"PyPI" = "https://pypi.org/project/layer-wise-integrated-gradients/"
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+# Dev / tests: pip install -e ".[dev]"
+
+[tool.setuptools.packages.find]
+include = ["lig*", "utils*"]
+exclude = [
+    "cache", "data", "results", "logs",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+markers = [
+    "slow: downloads models and runs IG (deselect with -m 'not slow')",
+]

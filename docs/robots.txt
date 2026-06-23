@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://eightsuzuki.github.io/layer-wise-integrated-gradients/sitemap.xml

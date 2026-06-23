@@ -1,0 +1,162 @@
+{
+  "samples": [
+    {
+      "id": "sample_00016",
+      "index": 16,
+      "label": "Congress / RTC",
+      "display_text": "But Congress didn't anticipate or intend more public debt, say opponents of the RTC's working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed."
+    },
+    {
+      "id": "sample_00410",
+      "index": 410,
+      "label": "Paper example",
+      "display_text": "The firm's drop in net reflected weaker revenue in transactions for its own account — a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.",
+      "default": true
+    }
+  ],
+  "sources": [
+    {
+      "id": "layer_ig_zero",
+      "label": "Zero",
+      "description": "Layer-direct IG with a zero-vector baseline.",
+      "route": "layer_direct",
+      "cache_parent": "samples/dev/z2z/layer_ig",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_layer_ig_baseline_zero",
+      "baseline": "zero",
+      "publish": true,
+      "default": true
+    },
+    {
+      "id": "layer_ig_itb",
+      "label": "ITB",
+      "description": "Layer-direct IG with ITB (Input Token Baseline).",
+      "route": "layer_direct",
+      "cache_parent": "samples/dev/z2z/layer_ig",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_layer_ig_baseline_self_input_token",
+      "baseline": "self_input_token",
+      "publish": false
+    },
+    {
+      "id": "layer_ig_itb_zero_ratio",
+      "label": "ITB-zeroRatio",
+      "description": "Layer-direct IG with ITB plus zero-ratio correction.",
+      "route": "layer_direct",
+      "cache_parent": "samples/dev/z2z/layer_ig",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_layer_ig_baseline_self_input_token_self_contrib_zero_base_ratio",
+      "baseline": "itb_zero_ratio",
+      "publish": false
+    },
+    {
+      "id": "composed_ATT_zero_MLP_zero",
+      "label": "ATT Zero · MLP Zero",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "zero",
+      "mlp_baseline": "zero",
+      "att_label": "Zero",
+      "mlp_label": "Zero",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_zero_MLP_zero",
+      "baseline": "zero",
+      "publish": true
+    },
+    {
+      "id": "composed_ATT_zero_MLP_ATTITBa0",
+      "label": "ATT Zero · MLP ATTITBa=0",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "zero",
+      "mlp_baseline": "attitba0",
+      "att_label": "Zero",
+      "mlp_label": "ATTITBa=0",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_zero_MLP_ATTITBa0",
+      "baseline": "zero",
+      "publish": true
+    },
+    {
+      "id": "composed_ATT_ITB_raw_MLP_zero",
+      "label": "ATT ITB · MLP Zero",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "itb_raw",
+      "mlp_baseline": "zero",
+      "att_label": "ITB",
+      "mlp_label": "Zero",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_raw_MLP_zero",
+      "baseline": "self_input_token",
+      "publish": true
+    },
+    {
+      "id": "composed_ATT_ITB_raw_MLP_ATTITBa0",
+      "label": "ATT ITB · MLP ATTITBa=0",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "itb_raw",
+      "mlp_baseline": "attitba0",
+      "att_label": "ITB",
+      "mlp_label": "ATTITBa=0",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_raw_MLP_ATTITBa0",
+      "baseline": "self_input_token",
+      "publish": true
+    },
+    {
+      "id": "composed_ATT_ITB_map_MLP_zero",
+      "label": "ATT ITB-mapRatio · MLP Zero",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "itb_map",
+      "mlp_baseline": "zero",
+      "att_label": "ITB-mapRatio",
+      "mlp_label": "Zero",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_map_MLP_zero",
+      "baseline": "itb_map_ratio",
+      "publish": true
+    },
+    {
+      "id": "composed_ATT_ITB_map_MLP_ATTITBa0",
+      "label": "ATT ITB-mapRatio · MLP ATTITBa=0",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "itb_map",
+      "mlp_baseline": "attitba0",
+      "att_label": "ITB-mapRatio",
+      "mlp_label": "ATTITBa=0",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_map_MLP_ATTITBa0",
+      "baseline": "itb_map_ratio",
+      "publish": true
+    },
+    {
+      "id": "composed_ATT_ITB_zero_base_ratio_MLP_zero",
+      "label": "ATT ITB-zeroRatio · MLP Zero",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "itb_zero_ratio",
+      "mlp_baseline": "zero",
+      "att_label": "ITB-zeroRatio",
+      "mlp_label": "Zero",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_zero_base_ratio_MLP_zero",
+      "baseline": "itb_zero_ratio",
+      "publish": true
+    },
+    {
+      "id": "composed_ATT_ITB_zero_base_ratio_MLP_ATTITBa0",
+      "label": "ATT ITB-zeroRatio · MLP ATTITBa=0",
+      "description": "Composed z→z: z→u (ATT) × u→z (MLP) IG.",
+      "route": "composed",
+      "att_baseline": "itb_zero_ratio",
+      "mlp_baseline": "attitba0",
+      "att_label": "ITB-zeroRatio",
+      "mlp_label": "ATTITBa=0",
+      "cache_parent": "samples/dev/z2z/composed",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_zero_base_ratio_MLP_ATTITBa0",
+      "baseline": "itb_zero_ratio",
+      "publish": true
+    }
+  ]
+}

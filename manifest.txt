@@ -1,0 +1,37 @@
+# Public release path manifest
+# One path per line (relative to monorepo root). Lines starting with # are ignored.
+# PTB experiments and LDC-licensed data paths are intentionally excluded.
+
+# --- Core LIG ---
+utils/calculations/ig
+utils/calculations/shared
+utils/README_ig_calculations.md
+utils/calculations/README.md
+
+# --- BERT infrastructure (no PTB runners) ---
+utils/common
+utils/cache
+utils/__init__.py
+
+# --- Verification only (no PTB batch) ---
+scripts/verify
+
+# Managed locally in release dir (not synced from monorepo):
+#   lig/viz/, lig/demo/, examples/paper_demo/, scripts/reproduce/,
+#   scripts/build_*.py, utils/reproduce/, docs/REPRODUCTION.md,
+#   docs/index.html, .github/workflows/pages.yml
+
+# --- Documentation (no PTB experiment guides) ---
+docs/execution/UV_SETUP.md
+
+# --- Tests ---
+test/test_layer_direct_ig.py
+test/test_layer_itb_zero_ratio.py
+test/test_layer_contribution_theory.py
+test/test_itb_self_contrib.py
+
+# Managed locally in release dir (not synced from monorepo):
+#   lig/, Dockerfile*, docker-compose*, scripts/ops/, MANIFEST.md
+#
+# Excluded after sync (public LIG release scope — VAIG lives in private monorepo):
+#   **/vaig.py, **/gpt2_mlp_vaig.py, attention/README_VAIG.md

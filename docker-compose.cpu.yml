@@ -1,0 +1,14 @@
+# CPU only
+services:
+  lig:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: layer-wise-integrated-gradients:cpu
+    volumes:
+      - hf-cache:/cache/huggingface
+      - ./output:/output
+    working_dir: /app
+
+volumes:
+  hf-cache:

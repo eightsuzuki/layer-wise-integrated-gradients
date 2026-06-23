@@ -1,0 +1,21 @@
+# GPU (NVIDIA Container Toolkit required)
+services:
+  lig:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: layer-wise-integrated-gradients:gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - hf-cache:/cache/huggingface
+      - ./output:/output
+    working_dir: /app
+
+volumes:
+  hf-cache:
