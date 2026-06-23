@@ -650,7 +650,7 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
   text-decoration: underline;
 }
 
-/* Layer / z / ATT / MLP flow diagram — responsive across 640px & 960px breakpoints */
+/* Layer / z / ATT / MLP flow diagram — horizontal desktop, vertical stack on mobile */
 .lig-flow-wrap {
   display: flex;
   justify-content: center;
@@ -767,20 +767,17 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
   transition: transform 0.22s ease;
 }
 
-/* Tablet / medium: compact horizontal with graceful wrap */
-@media (max-width: 960px) {
-  .lig-flow {
-    flex-wrap: wrap;
-    row-gap: 0.55rem;
+/* Mobile / narrow: vertical stack, down arrows, centered labels */
+@media (max-width: 768px) {
+  #notation .lig-abstract {
+    text-align: center;
   }
 
-  .lig-flow-node--layer-block {
-    flex-basis: auto;
+  #notation .lig-section-title::after {
+    margin-left: auto;
+    margin-right: auto;
   }
-}
 
-/* Narrow / mobile: vertical stack, down arrows, centered labels */
-@media (max-width: 640px) {
   .lig-flow {
     flex-direction: column;
     flex-wrap: nowrap;
@@ -795,18 +792,27 @@ body.lig-site:not(.lig-demo-embed) .z2z-viz-section {
   .lig-flow-var {
     width: auto;
     max-width: 100%;
+    text-align: center;
   }
 
   .lig-flow-node--layer-block {
     width: 100%;
     max-width: 14.5rem;
     align-self: center;
+    align-items: center;
   }
 
   .lig-flow-layer-inner {
     flex-direction: column;
     flex-wrap: nowrap;
+    align-items: center;
     row-gap: 0.4rem;
+  }
+
+  .lig-flow-arrow {
+    display: flex;
+    justify-content: center;
+    width: 100%;
   }
 
   .lig-flow-arrow::before {
