@@ -1403,12 +1403,12 @@ def create_interactive_visualization(
             </div>
             <div class="control-item">
                 <label class="circle-size-curve-label">Circle size mapping</label>
-                <p class="circle-size-curve-hint" id="circleSizeCurveHint">Green = pivot (drag to move). Orange = left of pivot, blue = right — drag each handle independently. Dashed line marks 100/N.</p>
+                <p class="circle-size-curve-hint" id="circleSizeCurveHint">Green = pivot at 100/N (drag ↕ to bend). Orange = left of pivot, blue = right — drag each handle independently. Dashed line marks 100/N.</p>
                 <div class="circle-size-curve-block">
                 <div class="curve-preset-btns" role="group" aria-label="Circle size mapping preset">
                     <button type="button" class="curve-preset-btn" data-curve-preset="linear" title="Diameter grows linearly with share">Linear</button>
                     <button type="button" class="curve-preset-btn" data-curve-preset="curve" title="Diameter grows with √share (area ∝ share)">Curve</button>
-                    <button type="button" class="curve-preset-btn is-active" data-curve-preset="pivot" title="Bend the curve around a draggable pivot; orange/blue handles shape each side">Pivot</button>
+                    <button type="button" class="curve-preset-btn is-active" data-curve-preset="pivot" title="Bend the curve vertically at the 100/N pivot; orange/blue handles shape each side">Pivot</button>
                 </div>
                 <div class="circle-size-curve-wrap">
                     <svg id="circleSizeCurveSvg" class="circle-size-curve-svg" viewBox="0 0 280 170" aria-label="Circle size mapping curve"></svg>
@@ -1665,7 +1665,7 @@ def create_interactive_visualization(
 
             function clampPivotAnchor() {{
                 const c = pivotBendControls.pivot;
-                c.xShare = Math.max(1e-6, Math.min(1 - 1e-6, c.xShare));
+                c.xShare = getCurveFocusShare();
                 c.yNorm = Math.max(
                     PIVOT_BEND_Y_NORM_MIN,
                     Math.min(PIVOT_BEND_Y_NORM_MAX, c.yNorm));
@@ -1736,7 +1736,7 @@ def create_interactive_visualization(
                 const hint = document.getElementById('circleSizeCurveHint');
                 if (!hint) return;
                 if (circleSizeCurvePreset === 'pivot') {{
-                    hint.textContent = 'Green = pivot (drag to move). Orange = left of pivot, blue = right — drag each handle independently. Dashed line marks 100/N.';
+                    hint.textContent = 'Green = pivot at 100/N (drag ↕ to bend). Orange = left of pivot, blue = right — drag each handle independently. Dashed line marks 100/N.';
                     return;
                 }}
                 hint.textContent = 'X: % of column max — left 2/3 expanded below ~100/N (dashed). Drag handles: ↔ contribution share, ↕ diameter (locks to your drag direction).';
@@ -2013,6 +2013,11 @@ def create_interactive_visualization(
             }}
 
             function renderCircleSizeCurveChart() {{
+                if (circleSizeCurvePreset === 'pivot') {{
+                    clampPivotAnchor();
+                    clampPivotBendSide('low');
+                    clampPivotBendSide('high');
+                }}
                 const svg = document.getElementById('circleSizeCurveSvg');
                 if (!svg) return;
                 const plot = getCurvePlotRect();
@@ -2169,7 +2174,7 @@ def create_interactive_visualization(
                         bendHit.setAttribute('r', String(CURVE_HANDLE_HIT_RADIUS));
                         bendHit.setAttribute('fill', 'transparent');
                         bendHit.setAttribute('stroke', 'none');
-                        bendHit.style.cursor = 'grab';
+                        bendHit.style.cursor = side === 'pivot' ? 'ns-resize' : 'grab';
                         bendGroup.appendChild(bendHit);
                         const bendHandle = document.createElementNS(ns, 'circle');
                         bendHandle.setAttribute('cx', String(px));
@@ -2178,7 +2183,7 @@ def create_interactive_visualization(
                         bendHandle.setAttribute('fill', fill);
                         bendHandle.setAttribute('stroke', '#ffffff');
                         bendHandle.setAttribute('stroke-width', '1.5');
-                        bendHandle.style.cursor = 'grab';
+                        bendHandle.style.cursor = side === 'pivot' ? 'ns-resize' : 'grab';
                         bendGroup.appendChild(bendHandle);
                         svg.appendChild(bendGroup);
                     }});
@@ -2271,7 +2276,6 @@ def create_interactive_visualization(
                         const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
                         if (activePivotBendDrag === 'pivot') {{
                             const pivot = pivotBendControls.pivot;
-                            pivot.xShare = chartTToShare(curveClientToChartT(clientX));
                             pivot.yNorm = curveClientToNormY(clientY);
                             clampPivotAnchor();
                             clampPivotBendSide('low');
