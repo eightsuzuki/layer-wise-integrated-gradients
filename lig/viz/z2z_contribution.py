@@ -1249,12 +1249,18 @@ def create_interactive_visualization(
                 max-width: 100%;
                 padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
             }}
+            body.lig-demo-embed .z2z-viz-scroll,
+            html.lig-iframe-embed .z2z-viz-scroll {{
+                box-sizing: border-box;
+                padding-right: calc(min(220px, calc(100vw - 16px)) + 12px);
+            }}
             body.lig-demo-embed .controls-panel,
             html.lig-iframe-embed .controls-panel {{
                 position: fixed;
                 top: max(8px, env(safe-area-inset-top, 0px));
                 right: max(8px, env(safe-area-inset-right, 0px));
                 left: auto;
+                z-index: 10;
                 width: min(220px, calc(100vw - 16px));
                 max-width: calc(100vw - 16px);
                 max-height: calc(100vh - 16px);
@@ -1343,6 +1349,8 @@ def create_interactive_visualization(
                 flex: 1 1 0;
                 order: 1;
                 align-items: flex-start;
+                position: relative;
+                z-index: 2;
                 width: auto;
                 max-width: 100%;
                 min-width: 0;
@@ -1356,6 +1364,7 @@ def create_interactive_visualization(
                 flex: 1 0 0;
                 min-width: 0;
                 pointer-events: none;
+                background: transparent;
             }}
             .z2z-viz-scroll-lead {{
                 min-width: var(--z2z-left-gutter, 0px);
@@ -1380,7 +1389,6 @@ def create_interactive_visualization(
                 margin-top: 0;
                 padding-top: 1.5rem;
                 padding-bottom: 2rem;
-                z-index: 1;
             }}
             .controls-panel {{
                 position: sticky;
@@ -1388,7 +1396,7 @@ def create_interactive_visualization(
                 flex: 0 0 auto;
                 order: 2;
                 align-self: flex-start;
-                z-index: 10000;
+                z-index: 1;
                 width: min(280px, calc(100vw - 24px));
                 max-width: min(280px, calc(100% - 8px));
                 margin: 0;
@@ -1563,6 +1571,22 @@ def create_interactive_visualization(
         {description_block}
         </div>{site_particles_zone_close}
         <div class="z2z-viz-section">
+        <div class="z2z-viz-scroll" id="z2zVizScroll">
+            <div class="z2z-viz-scroll-lead" aria-hidden="true"></div>
+            <div class="z2z-viz-scroll-body">
+        <div id="z2z-layout-root" class="{layout_root_class}">
+        <div id="container" style="position: relative; padding-top: 100px; padding-left: 160px; margin-left: auto; margin-right: auto;">
+            <svg id="pathSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 11000;"></svg>
+            <div id="targetTokenAxisCaption" class="axis-role-caption axis-role-caption-target" aria-hidden="true">Target token<br>(receives)</div>
+            <div id="tokenAxisCaptionTop" class="axis-role-caption axis-role-caption-source" aria-hidden="true">Source token (contributes)</div>
+            <div id="tokenAxisCaptionBottom" class="axis-role-caption axis-role-caption-source" aria-hidden="true">Source token (contributes)</div>
+            <div id="tokenAxisLabelsTop"></div>
+            <div id="tokenAxisLabelsBottom"></div>
+        </div>
+        </div>
+            </div>
+            <div class="z2z-viz-scroll-trail" aria-hidden="true"></div>
+        </div>
         <div class="{controls_panel_class}" id="displayOptionsPanel">
             <button type="button" class="controls-panel-toggle" id="displayOptionsToggle" aria-expanded="{display_options_toggle_expanded}" aria-controls="displayOptionsBody">
                 <span>Display options</span>
@@ -1623,22 +1647,6 @@ def create_interactive_visualization(
             </div>
             </div>
             </div>
-        </div>
-        <div class="z2z-viz-scroll" id="z2zVizScroll">
-            <div class="z2z-viz-scroll-lead" aria-hidden="true"></div>
-            <div class="z2z-viz-scroll-body">
-        <div id="z2z-layout-root" class="{layout_root_class}">
-        <div id="container" style="position: relative; padding-top: 100px; padding-left: 160px; margin-left: auto; margin-right: auto;">
-            <svg id="pathSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 11000;"></svg>
-            <div id="targetTokenAxisCaption" class="axis-role-caption axis-role-caption-target" aria-hidden="true">Target token<br>(receives)</div>
-            <div id="tokenAxisCaptionTop" class="axis-role-caption axis-role-caption-source" aria-hidden="true">Source token (contributes)</div>
-            <div id="tokenAxisCaptionBottom" class="axis-role-caption axis-role-caption-source" aria-hidden="true">Source token (contributes)</div>
-            <div id="tokenAxisLabelsTop"></div>
-            <div id="tokenAxisLabelsBottom"></div>
-        </div>
-        </div>
-            </div>
-            <div class="z2z-viz-scroll-trail" aria-hidden="true"></div>
         </div>
         </div>
         
