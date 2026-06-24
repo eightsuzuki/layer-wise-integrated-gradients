@@ -1016,13 +1016,18 @@ def create_interactive_visualization(
             }}
             .circle-size-curve-block {{
                 width: 100%;
-                max-width: 280px;
+                max-width: 100%;
+                box-sizing: border-box;
             }}
             .circle-size-curve-hint {{
                 margin: 0 0 8px 0;
                 font-size: 11px;
                 color: #64748b;
                 line-height: 1.4;
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+                overflow-wrap: break-word;
             }}
             .circle-size-curve-label {{
                 display: block;
@@ -1051,24 +1056,29 @@ def create_interactive_visualization(
             }}
             .curve-preset-btns {{
                 display: flex;
+                flex-wrap: wrap;
                 gap: 4px;
                 margin-bottom: 6px;
                 width: 100%;
                 box-sizing: border-box;
             }}
             .curve-preset-btn {{
-                flex: 1 1 33.333%;
-                width: 33.333%;
-                min-width: 0;
+                flex: 1 1 calc(33.333% - 4px);
+                min-width: min(4.5rem, 100%);
+                max-width: 100%;
                 box-sizing: border-box;
                 font-size: 10px;
                 font-weight: 600;
-                padding: 3px 6px;
+                padding: 4px 6px;
                 border-radius: 5px;
                 border: 1px solid #cbd5e1;
                 background: #ffffff;
                 color: #334155;
                 cursor: pointer;
+                white-space: normal;
+                line-height: 1.25;
+                text-align: center;
+                overflow-wrap: anywhere;
                 transition: background 0.15s, color 0.15s, border-color 0.15s;
             }}
             .curve-preset-btn:hover {{
@@ -1172,12 +1182,20 @@ def create_interactive_visualization(
             }}
             body.lig-demo-embed .z2z-viz-section,
             html.lig-iframe-embed .z2z-viz-section {{
-                margin: 8px 0 0;
+                margin: 8px auto 0;
+                justify-content: center;
+                width: 100%;
+                max-width: 100%;
+                padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
             }}
             body.lig-demo-embed .controls-panel,
             html.lig-iframe-embed .controls-panel {{
-                top: 8px;
+                position: fixed;
+                top: max(8px, env(safe-area-inset-top, 0px));
+                right: max(8px, env(safe-area-inset-right, 0px));
+                left: auto;
                 width: min(220px, calc(100vw - 16px));
+                max-width: calc(100vw - 16px);
                 max-height: calc(100vh - 16px);
                 font-size: 12px;
                 box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
@@ -1192,7 +1210,7 @@ def create_interactive_visualization(
             }}
             body.lig-demo-embed .circle-size-curve-block,
             html.lig-iframe-embed .circle-size-curve-block {{
-                max-width: 190px;
+                max-width: 100%;
             }}
             body.lig-demo-embed .circle-size-curve-hint,
             html.lig-iframe-embed .circle-size-curve-hint {{
@@ -1204,7 +1222,7 @@ def create_interactive_visualization(
                 top: 0;
                 z-index: 10001;
                 max-width: none;
-                padding-right: 8px;
+                padding-right: max(8px, min(220px, calc(100vw - 16px)) + 12px);
                 background: #fff;
             }}
             body.lig-demo-embed .demo-legend-list,
@@ -1238,14 +1256,17 @@ def create_interactive_visualization(
                 display: flex;
                 flex-direction: row;
                 align-items: flex-start;
+                justify-content: center;
+                flex-wrap: wrap;
                 gap: 12px;
-                width: fit-content;
-                min-width: 100%;
-                max-width: none;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
                 margin: 24px auto 0 auto;
+                padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
                 box-sizing: border-box;
                 position: relative;
-                overflow-x: visible;
+                overflow-x: auto;
             }}
             body.lig-site:not(.lig-demo-embed) .z2z-viz-section {{
                 background: var(--lig-bg);
@@ -1256,11 +1277,13 @@ def create_interactive_visualization(
             }}
             .controls-panel {{
                 position: sticky;
-                top: 12px;
+                top: max(12px, env(safe-area-inset-top, 0px));
                 flex: 0 0 auto;
                 order: 2;
+                align-self: flex-start;
                 z-index: 10000;
                 width: min(280px, calc(100vw - 24px));
+                max-width: min(280px, calc(100% - 8px));
                 margin: 0;
                 box-sizing: border-box;
                 max-height: calc(100vh - 24px);
@@ -1319,16 +1342,20 @@ def create_interactive_visualization(
             }}
             .z2z-layout-root {{
                 box-sizing: border-box;
-                margin-top: 0;
+                margin: 0 auto;
                 flex: 0 1 auto;
                 order: 1;
                 min-width: min-content;
+                max-width: 100%;
                 overflow: visible;
             }}
             #container {{
                 position: relative;
                 isolation: isolate;
                 overflow: visible;
+                margin-left: auto;
+                margin-right: auto;
+                max-width: 100%;
             }}
             .z2z-layout-normal {{
                 margin-left: auto;
@@ -1346,22 +1373,69 @@ def create_interactive_visualization(
                 margin-right: 0;
                 width: auto;
             }}
+            @media (max-width: 1100px) {{
+                body.lig-site:not(.lig-demo-embed) .z2z-viz-section {{
+                    flex-direction: column;
+                    align-items: center;
+                }}
+                body.lig-site:not(.lig-demo-embed) .controls-panel {{
+                    position: static;
+                    order: -1;
+                    top: auto;
+                    width: min(280px, 100%);
+                    max-width: min(280px, calc(100vw - 24px));
+                    max-height: none;
+                    margin: 0 auto 12px auto;
+                    align-self: center;
+                }}
+                body.lig-site:not(.lig-demo-embed) .controls-panel.is-expanded .controls-panel-body {{
+                    max-height: min(55vh, 420px);
+                }}
+            }}
             @media (max-width: 960px) {{
                 .z2z-viz-section {{
                     flex-direction: column;
+                    align-items: center;
                 }}
                 .controls-panel {{
                     position: static;
                     order: -1;
                     top: auto;
-                    width: 100%;
-                    max-width: none;
+                    width: min(280px, 100%);
+                    max-width: min(280px, calc(100vw - 24px));
                     max-height: none;
-                    margin: 0 0 12px 0;
+                    margin: 0 auto 12px auto;
+                    align-self: center;
                     font-size: 12px;
                 }}
                 .controls-panel.is-expanded .controls-panel-body {{
                     max-height: min(55vh, 420px);
+                }}
+                .curve-preset-btn {{
+                    flex: 1 1 calc(50% - 4px);
+                    min-width: min(5rem, calc(50% - 4px));
+                }}
+            }}
+            @media (max-width: 520px) {{
+                body.lig-demo-embed .controls-panel,
+                html.lig-iframe-embed .controls-panel {{
+                    position: static;
+                    width: 100%;
+                    max-width: 100%;
+                    margin: 0 0 12px 0;
+                }}
+                body.lig-demo-embed .z2z-page-header,
+                html.lig-iframe-embed .z2z-page-header {{
+                    padding-right: max(8px, env(safe-area-inset-right, 0px));
+                }}
+                body.lig-demo-embed .z2z-viz-section,
+                html.lig-iframe-embed .z2z-viz-section {{
+                    flex-direction: column;
+                    align-items: stretch;
+                }}
+                .curve-preset-btn {{
+                    flex: 1 1 100%;
+                    min-width: 100%;
                 }}
             }}
             .z2z-layout-rotate-90 {{
