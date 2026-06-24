@@ -1314,6 +1314,21 @@ def create_interactive_visualization(
                 border-top: 1px solid #e2e8f0;
                 margin: 12px 0;
             }}
+            .controls-panel.is-viewport-pinned-bottom {{
+                position: fixed !important;
+                top: auto !important;
+                bottom: max(12px, env(safe-area-inset-bottom, 0px));
+                right: max(12px, env(safe-area-inset-right, 0px));
+                left: auto !important;
+                margin: 0 !important;
+                align-self: auto;
+            }}
+            .controls-panel.is-viewport-pinned-bottom.is-expanded .controls-panel-body {{
+                max-height: min(
+                    55vh,
+                    calc(100vh - 24px - 40px - env(safe-area-inset-bottom, 0px))
+                );
+            }}
             @media (prefers-color-scheme: dark) {{
                 .token-label {{
                     color: #4a5f63;
@@ -2444,6 +2459,53 @@ def create_interactive_visualization(
                     setExpanded(panel.classList.contains('is-collapsed'));
                     requestAnimationFrame(repositionDuplicatePanelIfPresent);
                 }});
+            }}
+
+            const DISPLAY_OPTIONS_PIN_TOP_PX = 12;
+
+            function isDisplayOptionsPanelPinEligible() {{
+                if (isEmbedPage
+                    || document.body.classList.contains('lig-demo-embed')
+                    || document.documentElement.classList.contains('lig-iframe-embed')) {{
+                    return false;
+                }}
+                if (document.body.classList.contains('lig-site')
+                    && window.matchMedia('(max-width: 1100px)').matches) {{
+                    return false;
+                }}
+                if (window.matchMedia('(max-width: 960px)').matches) {{
+                    return false;
+                }}
+                return true;
+            }}
+
+            function shouldPinDisplayOptionsPanelToViewportBottom() {{
+                if (!isDisplayOptionsPanelPinEligible()) return false;
+                const vizSection = document.querySelector('.z2z-viz-section');
+                if (!vizSection) return false;
+                return vizSection.getBoundingClientRect().top <= DISPLAY_OPTIONS_PIN_TOP_PX;
+            }}
+
+            let displayOptionsPanelPinRaf = 0;
+            function updateDisplayOptionsPanelViewportPin() {{
+                if (displayOptionsPanelPinRaf) return;
+                displayOptionsPanelPinRaf = requestAnimationFrame(() => {{
+                    displayOptionsPanelPinRaf = 0;
+                    const panel = document.getElementById('displayOptionsPanel');
+                    if (!panel) return;
+                    const pinned = shouldPinDisplayOptionsPanelToViewportBottom();
+                    const wasPinned = panel.classList.contains('is-viewport-pinned-bottom');
+                    panel.classList.toggle('is-viewport-pinned-bottom', pinned);
+                    if (pinned !== wasPinned) {{
+                        repositionDuplicatePanelIfPresent();
+                    }}
+                }});
+            }}
+
+            function bindDisplayOptionsPanelScrollPin() {{
+                updateDisplayOptionsPanelViewportPin();
+                window.addEventListener('scroll', updateDisplayOptionsPanelViewportPin, {{ passive: true }});
+                window.addEventListener('resize', updateDisplayOptionsPanelViewportPin, {{ passive: true }});
             }}
 
             function bindCircleSizeControls() {{
@@ -4185,6 +4247,7 @@ def create_interactive_visualization(
             bindLayoutSliders();
             bindCircleSizeControls();
             bindDisplayOptionsPanelToggle();
+            bindDisplayOptionsPanelScrollPin();
 
             container.addEventListener('click', handleVizBackgroundClick);
             const layoutRoot = document.getElementById('z2z-layout-root');
