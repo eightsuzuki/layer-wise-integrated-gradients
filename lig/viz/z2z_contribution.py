@@ -1640,6 +1640,9 @@ def create_interactive_visualization(
             }}
             const pathSvg = document.getElementById('pathSvg');
             const vizScrollEl = document.getElementById('z2zVizScroll');
+            const vizScrollLeadEl = vizScrollEl ? vizScrollEl.querySelector('.z2z-viz-scroll-lead') : null;
+            const vizScrollTrailEl = vizScrollEl ? vizScrollEl.querySelector('.z2z-viz-scroll-trail') : null;
+            const vizScrollBodyEl = vizScrollEl ? vizScrollEl.querySelector('.z2z-viz-scroll-body') : null;
             const VIZ_LAYOUT_TRANSITION_MS = 420;
             let vizLayoutTransitionTimer = null;
 
@@ -2991,6 +2994,7 @@ def create_interactive_visualization(
                     }}
                     updateCirclePositionsAndDrawPaths();
                     syncContainerHeight();
+                    syncVizScrollCenter();
                 }}, 100);
             }}
 
@@ -3954,6 +3958,7 @@ def create_interactive_visualization(
                 repositionDuplicatePanelIfPresent();
                 updateCirclePositionsAndDrawPaths();
                 syncContainerHeight();
+                syncVizScrollCenter();
             }}, 150));
             
             // 横軸ラベルを表示（一番上のレイヤーのToken位置を基準に）
@@ -4066,6 +4071,78 @@ def create_interactive_visualization(
                 vizScrollEl.style.setProperty('--z2z-left-gutter', Math.max(0, Math.round(gutter)) + 'px');
             }}
 
+            function getVizScrollMinLead() {{
+                if (!vizScrollEl) return 0;
+                const raw = getComputedStyle(vizScrollEl).getPropertyValue('--z2z-left-gutter').trim();
+                const parsed = parseFloat(raw);
+                return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+            }}
+
+            function resetVizScrollSpacers() {{
+                if (vizScrollLeadEl) {{
+                    vizScrollLeadEl.style.flex = '';
+                    vizScrollLeadEl.style.width = '';
+                }}
+                if (vizScrollTrailEl) {{
+                    vizScrollTrailEl.style.flex = '';
+                    vizScrollTrailEl.style.width = '';
+                }}
+            }}
+
+            function measureSourceCaptionOffsetInBody() {{
+                const topCap = document.getElementById('tokenAxisCaptionTop');
+                if (!topCap || !vizScrollBodyEl) return null;
+                const bodyRect = vizScrollBodyEl.getBoundingClientRect();
+                const capRect = topCap.getBoundingClientRect();
+                if (!Number.isFinite(capRect.width)) return null;
+                return capRect.left + capRect.width / 2 - bodyRect.left;
+            }}
+
+            function measureSourceCaptionCenterInScroll() {{
+                const topCap = document.getElementById('tokenAxisCaptionTop');
+                if (!topCap || !vizScrollEl) return null;
+                const scrollRect = vizScrollEl.getBoundingClientRect();
+                const capRect = topCap.getBoundingClientRect();
+                if (!Number.isFinite(capRect.width)) return null;
+                return capRect.left + capRect.width / 2 - scrollRect.left + vizScrollEl.scrollLeft;
+            }}
+
+            function syncVizScrollCenter() {{
+                if (!vizScrollEl || !vizScrollBodyEl) return;
+                const captionOffset = measureSourceCaptionOffsetInBody();
+                if (captionOffset === null) return;
+
+                const minLead = getVizScrollMinLead();
+                const bodyWidth = vizScrollBodyEl.offsetWidth;
+                const clientWidth = vizScrollEl.clientWidth;
+                if (clientWidth <= 0) return;
+                const viewportCenter = clientWidth / 2;
+
+                resetVizScrollSpacers();
+                void vizScrollEl.offsetWidth;
+
+                const overflows = (minLead + bodyWidth) > clientWidth;
+                if (!overflows) {{
+                    const desiredLead = Math.max(minLead, viewportCenter - captionOffset);
+                    const trailWidth = Math.max(0, clientWidth - desiredLead - bodyWidth);
+                    if (vizScrollLeadEl) {{
+                        vizScrollLeadEl.style.flex = '0 0 auto';
+                        vizScrollLeadEl.style.width = Math.round(desiredLead) + 'px';
+                    }}
+                    if (vizScrollTrailEl) {{
+                        vizScrollTrailEl.style.flex = '0 0 auto';
+                        vizScrollTrailEl.style.width = Math.round(trailWidth) + 'px';
+                    }}
+                    vizScrollEl.scrollLeft = 0;
+                    return;
+                }}
+
+                const captionCenter = measureSourceCaptionCenterInScroll();
+                if (captionCenter === null) return;
+                const maxScrollLeft = Math.max(0, vizScrollEl.scrollWidth - clientWidth);
+                vizScrollEl.scrollLeft = Math.max(0, Math.min(maxScrollLeft, captionCenter - viewportCenter));
+            }}
+
             function measureLayerLabelLeftOverflow() {{
                 let overflow = 0;
                 const containerRect = container.getBoundingClientRect();
@@ -4133,6 +4210,7 @@ def create_interactive_visualization(
                         duplicateOverallContainer.classList.remove('z2z-dup-entering');
                         recalcLayoutMetrics();
                         syncContainerHeight();
+                        syncVizScrollCenter();
                     }});
                 }});
             }}
@@ -4241,7 +4319,7 @@ def create_interactive_visualization(
                 const bottomCap = document.getElementById('tokenAxisCaptionBottom');
                 if (!targetCap || !topCap || !bottomCap) return;
 
-                applyContainerLeftGutter();
+                const leftGutter = applyContainerLeftGutter();
                 positionTargetAxisCaption(targetCap, getMidLayerCenterY());
 
                 const topBounds = measureTokenAxisLabelBounds('.token-axis-label-top');
@@ -4271,6 +4349,7 @@ def create_interactive_visualization(
                         getLayerTop(0) + lastRow * getTokenVerticalSpacing() + circleSlotSize
                             + layoutBottomLabelOffset + sourceAxisCaptionOffset);
                 }}
+                syncVizScrollCenter();
             }}
 
             function updateTokenAxisLabels() {{
@@ -4424,6 +4503,7 @@ def create_interactive_visualization(
                 requestAnimationFrame(() => {{
                     updateCirclePositionsAndDrawPaths();
                     syncContainerHeight();
+                    syncVizScrollCenter();
                 }});
             }}
             scheduleDeferred(runInitialVisualization, 200);
