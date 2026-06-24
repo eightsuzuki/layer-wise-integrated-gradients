@@ -125,10 +125,39 @@ def _demo_source_specs(sources: list[dict]) -> list[dict]:
     ]
 
 
+def _compact_z2z_data(z2z_data: list, *, ndigits: int = 5) -> list:
+    from lig.viz.z2z_contribution import compact_z2z_matrix
+
+    return compact_z2z_matrix(z2z_data, ndigits=ndigits)
+
+
+def _export_demo_data_chunk(
+    out_dir: Path,
+    sample_id: str,
+    source_id: str,
+    z2z_data: list,
+    tokens: list[str],
+) -> str:
+    """Write compact JSON chunk; return URL path relative to githubpage HTML."""
+    chunk_dir = out_dir / "demo_data"
+    chunk_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"{sample_id}__{source_id}.json"
+    payload = {"z2zData": _compact_z2z_data(z2z_data), "tokens": tokens}
+    (chunk_dir / fname).write_text(
+        json.dumps(payload, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return f"demo_data/{fname}"
+
+
 def _load_demo_matrix(
     samples: list[dict],
     sources: list[dict],
     data_dir: Path,
+    *,
+    out_dir: Path,
+    initial_sample_id: str,
+    initial_source_id: str,
 ) -> tuple[dict, dict[str, str], str]:
     from lig.viz.z2z_contribution import load_demo_payload
 
@@ -146,11 +175,20 @@ def _load_demo_matrix(
                 print(f"Skip missing: {json_path}")
                 continue
             z2z_data, tokens, _text = load_demo_payload(str(json_path))
-            demo_matrix[sample_id][source["id"]] = {
-                "z2z_data": z2z_data,
-                "tokens": tokens,
-                "description_html": description_unified(entry, source),
-            }
+            source_id = source["id"]
+            description_html = description_unified(entry, source)
+            data_url = _export_demo_data_chunk(out_dir, sample_id, source_id, z2z_data, tokens)
+            if sample_id == initial_sample_id and source_id == initial_source_id:
+                demo_matrix[sample_id][source_id] = {
+                    "z2z_data": _compact_z2z_data(z2z_data),
+                    "tokens": tokens,
+                    "description_html": description_html,
+                }
+            else:
+                demo_matrix[sample_id][source_id] = {
+                    "data_url": data_url,
+                    "description_html": description_html,
+                }
     return demo_matrix, sample_labels, default_sample_id
 
 
@@ -191,7 +229,15 @@ def build_unified_page(
     default_source: dict,
     circle_max_style: str,
 ) -> Path:
-    demo_matrix, sample_labels, default_sample_id = _load_demo_matrix(samples, sources, data_dir)
+    default_sample_id = next((s["id"] for s in samples if s.get("default")), samples[0]["id"])
+    demo_matrix, sample_labels, default_sample_id = _load_demo_matrix(
+        samples,
+        sources,
+        data_dir,
+        out_dir=out_dir,
+        initial_sample_id=default_sample_id,
+        initial_source_id=default_source["id"],
+    )
 
     page = _render_unified_page(
         demo_matrix,
@@ -279,7 +325,8 @@ def main() -> int:
             raise SystemExit(f"Unknown sample: {args.sample}")
 
     all_sources = manifest["sources"]
-    default_source = next((s for s in all_sources if s.get("default")), all_sources[0])
+    page_sources = [s for s in all_sources if s.get("publish", True)]
+    default_source = next((s for s in page_sources if s.get("default")), page_sources[0])
 
     if not args.all_sources and not args.source:
         build_unified_page(
@@ -287,7 +334,7 @@ def main() -> int:
             samples,
             data_dir=args.data_dir,
             out_dir=args.out_dir,
-            sources=all_sources,
+            sources=page_sources,
             default_source=default_source,
             circle_max_style="slot_cap",
         )

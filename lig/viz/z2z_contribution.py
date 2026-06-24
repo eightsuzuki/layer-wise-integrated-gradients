@@ -451,8 +451,8 @@ def create_interactive_visualization(
     import html as html_module
     import json as json_module
 
-    z2z_json = json_module.dumps(z2z_data)
-    tokens_json = json_module.dumps(tokens)
+    z2z_json = json_module.dumps(compact_z2z_matrix(z2z_data), separators=(',', ':'))
+    tokens_json = json_module.dumps(tokens, separators=(',', ':'))
 
     escaped_title = html_module.escape(title)
     if embed_mode:
@@ -1328,6 +1328,15 @@ def create_interactive_visualization(
                 box-sizing: border-box;
                 position: relative;
                 overflow: visible;
+            }}
+            #z2z-layout-root.z2z-demo-loading {{
+                opacity: 0.55;
+                pointer-events: none;
+            }}
+            .demo-load-error {{
+                color: #b91c1c;
+                margin-top: 8px;
+                font-size: 14px;
             }}
             .z2z-viz-scroll {{
                 display: flex;
@@ -2597,7 +2606,7 @@ def create_interactive_visualization(
                 const resetDisplayBtn = document.getElementById('resetDisplayOptionsBtn');
                 if (resetDisplayBtn) resetDisplayBtn.addEventListener('click', resetDisplayOptions);
                 bindCircleSizeCurveChart();
-                renderCircleSizeCurveChart();
+                scheduleDeferred(() => renderCircleSizeCurveChart(), 800);
             }}
 
             function getSequenceLength() {{
@@ -3038,7 +3047,6 @@ def create_interactive_visualization(
                 const estimatedBottom = estimateVisualizationBottom();
                 container.style.paddingBottom = layoutContainerBottomMargin + 'px';
                 container.style.minHeight = (estimatedBottom + layoutContainerBottomMargin) + 'px';
-                renderCircleSizeCurveChart();
             }}
 
             function clearVisualization() {{
@@ -3752,6 +3760,10 @@ def create_interactive_visualization(
 
             // 円の位置を更新し、Layer間の線を描画する関数
             function updateCirclePositionsAndDrawPaths() {{
+                if (!showPaths) {{
+                    if (pathSvg) pathSvg.innerHTML = '';
+                    return;
+                }}
                 // まず、すべての円の位置を更新（元の位置）
                 for (let layer = 0; layer < numLayersToShow; layer++) {{
                     if (!circlePositions[layer]) continue;
@@ -3788,8 +3800,6 @@ def create_interactive_visualization(
                 
                 // 既存のパスを削除
                 pathSvg.innerHTML = '';
-                
-                if (!showPaths) return;
                 
                 // パスの表示カット（閾値）を統一設定
                 // 閾値の計算式: pathThreshold = 1.0 / (numTokensToShow * 0.75)
@@ -3969,18 +3979,12 @@ def create_interactive_visualization(
                 updateTokenAxisLabels();
             }}
             
-            // 初期レンダリング後に位置を更新
-            setTimeout(() => {{
+            // ウィンドウリサイズ時にも更新（スロットル）
+            window.addEventListener('resize', throttle(() => {{
+                repositionDuplicatePanelIfPresent();
                 updateCirclePositionsAndDrawPaths();
-            }}, 100);
-            
-            // ウィンドウリサイズ時にも更新
-            window.addEventListener('resize', () => {{
-                setTimeout(() => {{
-                    repositionDuplicatePanelIfPresent();
-                    updateCirclePositionsAndDrawPaths();
-                }}, 100);
-            }});
+                syncContainerHeight();
+            }}, 150));
             
             // 横軸ラベルを表示（一番上のレイヤーのToken位置を基準に）
             const tokenAxisLabelsTop = document.getElementById('tokenAxisLabelsTop');
@@ -4443,17 +4447,16 @@ def create_interactive_visualization(
             const layoutRoot = document.getElementById('z2z-layout-root');
             if (layoutRoot) layoutRoot.addEventListener('click', handleVizBackgroundClick);
 
-            recalcLayoutMetrics();
-            buildVisualization();
-            updateTokenAxisLabels();
-            setTimeout(() => {{
-                if (selectedToken !== null) {{
-                    updateSelectedToken(selectedToken);
-                    updateDuplicateAxisLabels();
-                }}
-                updateCirclePositionsAndDrawPaths();
-                syncContainerHeight();
-            }}, 100);
+            function runInitialVisualization() {{
+                recalcLayoutMetrics();
+                buildVisualization();
+                updateTokenAxisLabels();
+                requestAnimationFrame(() => {{
+                    updateCirclePositionsAndDrawPaths();
+                    syncContainerHeight();
+                }});
+            }}
+            scheduleDeferred(runInitialVisualization, 200);
 
             (function initEmbedBridge() {{
                 const queryEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
