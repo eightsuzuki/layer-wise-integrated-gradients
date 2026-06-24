@@ -178,17 +178,10 @@ def _load_demo_matrix(
             source_id = source["id"]
             description_html = description_unified(entry, source)
             data_url = _export_demo_data_chunk(out_dir, sample_id, source_id, z2z_data, tokens)
-            if sample_id == initial_sample_id and source_id == initial_source_id:
-                demo_matrix[sample_id][source_id] = {
-                    "z2z_data": _compact_z2z_data(z2z_data),
-                    "tokens": tokens,
-                    "description_html": description_html,
-                }
-            else:
-                demo_matrix[sample_id][source_id] = {
-                    "data_url": data_url,
-                    "description_html": description_html,
-                }
+            demo_matrix[sample_id][source_id] = {
+                "data_url": data_url,
+                "description_html": description_html,
+            }
     return demo_matrix, sample_labels, default_sample_id
 
 

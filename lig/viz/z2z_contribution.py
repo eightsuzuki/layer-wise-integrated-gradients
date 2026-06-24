@@ -541,8 +541,8 @@ def create_interactive_visualization(
             function getCurrentDemo() {{
                 return demoMatrix[currentSampleId][currentSourceId];
             }}
-            let z2zData = getCurrentDemo().z2zData;
-            let tokens = getCurrentDemo().tokens;
+            let z2zData = isDemoEntryLoaded(getCurrentDemo()) ? getCurrentDemo().z2zData : null;
+            let tokens = isDemoEntryLoaded(getCurrentDemo()) ? getCurrentDemo().tokens : null;
         """
         sample_selector_html = _build_demo_nav_html(
             sample_labels,
@@ -715,11 +715,13 @@ def create_interactive_visualization(
                     clickedLayer = null;
                     recalcLayoutMetrics();
                     clearVisualization();
-                    buildVisualization();
-                    updateTokenAxisLabels();
-                    requestAnimationFrame(() => {
-                        updateCirclePositionsAndDrawPaths();
-                        syncContainerHeight();
+                    buildVisualization(() => {
+                        updateTokenAxisLabels();
+                        requestAnimationFrame(() => {
+                            updateCirclePositionsAndDrawPaths();
+                            syncContainerHeight();
+                            syncVizScrollCenter();
+                        });
                     });
                 }).catch(() => {
                     const descEl = document.getElementById('visualization-description');
@@ -751,9 +753,10 @@ def create_interactive_visualization(
     selected_token_js = "null" if target_token is None else str(int(target_token))
 
     site_banner_block = demo_site_banner_html(logo_href=logo_href) if show_site_banner else ""
-    site_particles_zone_open = demo_site_particles_zone_open() if show_site_banner else ""
-    site_particles_zone_close = demo_site_particles_zone_close() if show_site_banner else ""
-    site_particles_scripts = demo_site_particles_scripts() if show_site_banner else ""
+    # particles.js is reserved for the landing page (docs/index.html) only.
+    site_particles_zone_open = ""
+    site_particles_zone_close = ""
+    site_particles_scripts = ""
     body_class = "lig-demo-embed" if embed_mode else "lig-site"
     class_attr = f' class="{body_class}"'
     html_class_attr = ' class="lig-iframe-embed"' if embed_mode else ""
@@ -1332,8 +1335,27 @@ def create_interactive_visualization(
                 overflow: visible;
             }}
             #z2z-layout-root.z2z-demo-loading {{
-                opacity: 0.55;
+                opacity: 0.42;
                 pointer-events: none;
+                position: relative;
+            }}
+            #z2z-layout-root.z2z-demo-loading::after {{
+                content: '';
+                position: absolute;
+                top: 42%;
+                left: 50%;
+                width: 36px;
+                height: 36px;
+                margin: -18px 0 0 -18px;
+                border: 3px solid #e2e8f0;
+                border-top-color: #0d9488;
+                border-radius: 50%;
+                animation: z2z-demo-spin 0.75s linear infinite;
+                z-index: 20000;
+                pointer-events: none;
+            }}
+            @keyframes z2z-demo-spin {{
+                to {{ transform: rotate(360deg); }}
             }}
             .demo-load-error {{
                 color: #b91c1c;
@@ -1637,6 +1659,79 @@ def create_interactive_visualization(
                         pendingArgs = null;
                     }}, waitMs);
                 }};
+            }}
+            let globalTooltipEl = null;
+            let circleTooltipEl = null;
+            let updateSelectedToken = null;
+            let circleTooltipHoverEl = null;
+            let circleSizeChartRendered = false;
+            let vizBuildGeneration = 0;
+            const VIZ_LAYERS_PER_FRAME = 2;
+            let layoutRecalcScheduled = false;
+
+            function ensureVizTooltips() {{
+                if (!globalTooltipEl) {{
+                    globalTooltipEl = document.createElement('div');
+                    globalTooltipEl.className = 'tooltip';
+                    document.body.appendChild(globalTooltipEl);
+                }}
+                if (!circleTooltipEl) {{
+                    circleTooltipEl = document.createElement('div');
+                    circleTooltipEl.className = 'tooltip';
+                    circleTooltipEl.style.backgroundColor = 'rgba(128, 128, 128, 0.9)';
+                    circleTooltipEl.style.zIndex = '1000000';
+                    document.body.appendChild(circleTooltipEl);
+                }}
+            }}
+
+            function bindCircleTooltipDelegation() {{
+                if (container.dataset.circleTooltipBound) return;
+                container.dataset.circleTooltipBound = '1';
+                container.addEventListener('mouseover', (e) => {{
+                    let circle = e.target.closest('.contribution-circle');
+                    if (!circle) {{
+                        const slot = e.target.closest('.contribution-circle-slot');
+                        if (slot) circle = slot.querySelector('.contribution-circle');
+                    }}
+                    if (!circle || !container.contains(circle)) return;
+                    if (circle === circleTooltipHoverEl) return;
+                    circleTooltipHoverEl = circle;
+                    const idx = parseInt(circle.dataset.contributionTokenIdx, 10);
+                    const pct = circle.dataset.contributionPct || '';
+                    circleTooltipEl.textContent = `Token ${{idx}}: ${{tokenLabelAt(idx)}} (${{pct}}%)`;
+                    const rect = circle.getBoundingClientRect();
+                    circleTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
+                    circleTooltipEl.style.top = (rect.top - 5) + 'px';
+                    circleTooltipEl.style.transform = 'translate(-50%, -100%)';
+                    circleTooltipEl.style.display = 'block';
+                }});
+                container.addEventListener('mouseout', (e) => {{
+                    const related = e.relatedTarget;
+                    if (related && (related.closest('.contribution-circle-slot') || related.closest('.contribution-circle'))) return;
+                    circleTooltipHoverEl = null;
+                    circleTooltipEl.style.display = 'none';
+                }});
+                container.addEventListener('mousemove', (e) => {{
+                    if (!circleTooltipHoverEl || circleTooltipEl.style.display === 'none') return;
+                    const rect = circleTooltipHoverEl.getBoundingClientRect();
+                    circleTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
+                    circleTooltipEl.style.top = (rect.top - 5) + 'px';
+                }});
+            }}
+
+            function scheduleRecalcLayoutMetrics() {{
+                if (layoutRecalcScheduled) return;
+                layoutRecalcScheduled = true;
+                requestAnimationFrame(() => {{
+                    layoutRecalcScheduled = false;
+                    recalcLayoutMetrics();
+                }});
+            }}
+
+            function ensureCircleSizeCurveChart() {{
+                if (circleSizeChartRendered) return;
+                circleSizeChartRendered = true;
+                renderCircleSizeCurveChart();
             }}
             const pathSvg = document.getElementById('pathSvg');
             const vizScrollEl = document.getElementById('z2zVizScroll');
@@ -2204,6 +2299,7 @@ def create_interactive_visualization(
                 }}
                 const svg = document.getElementById('circleSizeCurveSvg');
                 if (!svg) return;
+                circleSizeChartRendered = true;
                 const plot = getCurvePlotRect();
                 const minD = circleSizeMinPx;
                 const maxD = getCircleMaxDiameterPx();
@@ -2549,6 +2645,9 @@ def create_interactive_visualization(
                         if (expanded) body.removeAttribute('inert');
                         else body.setAttribute('inert', '');
                     }}
+                    if (expanded) {{
+                        requestAnimationFrame(() => ensureCircleSizeCurveChart());
+                    }}
                 }};
                 toggle.addEventListener('click', () => {{
                     setExpanded(panel.classList.contains('is-collapsed'));
@@ -2579,7 +2678,9 @@ def create_interactive_visualization(
                 const resetDisplayBtn = document.getElementById('resetDisplayOptionsBtn');
                 if (resetDisplayBtn) resetDisplayBtn.addEventListener('click', resetDisplayOptions);
                 bindCircleSizeCurveChart();
-                scheduleDeferred(() => renderCircleSizeCurveChart(), 800);
+                if (!document.getElementById('displayOptionsPanel')?.classList.contains('is-collapsed')) {{
+                    ensureCircleSizeCurveChart();
+                }}
             }}
 
             function getSequenceLength() {{
@@ -2771,26 +2872,7 @@ def create_interactive_visualization(
                         value: circleValue,
                         size: parseFloat(circle.style.width) || mapShareToDiameter(parseFloat(circle.dataset.shareRatio || '0')),
                     }};
-
-                    circle.addEventListener('mouseenter', function(e) {{
-                        e.stopPropagation();
-                        circleTooltip.textContent = `Token ${{circleIdx}}: ${{tokenLabelAt(circleIdx)}} (${{contributionPercent}}%)`;
-                        const rect = this.getBoundingClientRect();
-                        circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                        circleTooltip.style.top = (rect.top - 5) + 'px';
-                        circleTooltip.style.transform = 'translate(-50%, -100%)';
-                        circleTooltip.style.display = 'block';
-                    }}, true);
-                    circle.addEventListener('mouseleave', function(e) {{
-                        e.stopPropagation();
-                        circleTooltip.style.display = 'none';
-                    }}, true);
-                    circle.addEventListener('mousemove', function(e) {{
-                        e.stopPropagation();
-                        const rect = this.getBoundingClientRect();
-                        circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                        circleTooltip.style.top = (rect.top - 5) + 'px';
-                    }}, true);
+                    circle.dataset.contributionPct = contributionPercent + '%';
                 }});
             }}
 
@@ -2985,17 +3067,18 @@ def create_interactive_visualization(
             function rebuildVisualizationLayout() {{
                 recalcLayoutMetrics();
                 clearVisualization();
-                buildVisualization();
-                updateTokenAxisLabels();
-                setTimeout(() => {{
-                    if (selectedToken !== null) {{
-                        updateSelectedToken(selectedToken);
-                        updateDuplicateAxisLabels();
-                    }}
-                    updateCirclePositionsAndDrawPaths();
-                    syncContainerHeight();
-                    syncVizScrollCenter();
-                }}, 100);
+                buildVisualization(() => {{
+                    updateTokenAxisLabels();
+                    setTimeout(() => {{
+                        if (selectedToken !== null) {{
+                            updateSelectedToken(selectedToken);
+                            updateDuplicateAxisLabels();
+                        }}
+                        updateCirclePositionsAndDrawPaths();
+                        syncContainerHeight();
+                        syncVizScrollCenter();
+                    }}, 100);
+                }});
             }}
 
             function recalcLayoutMetrics() {{
@@ -3091,20 +3174,12 @@ def create_interactive_visualization(
                 updateTokenAxisLabels();
             }});
             
-            function buildVisualization() {{
-            // グローバルツールチップを作成（長方形用と円用の2つ）
-            const globalTooltip = document.createElement('div');
-            globalTooltip.className = 'tooltip';
-            document.body.appendChild(globalTooltip);
+            function buildVisualization(onComplete) {{
+            ensureVizTooltips();
+            bindCircleTooltipDelegation();
             
-            const circleTooltip = document.createElement('div');
-            circleTooltip.className = 'tooltip';
-            circleTooltip.style.backgroundColor = 'rgba(128, 128, 128, 0.9)'; // 灰色
-            circleTooltip.style.zIndex = '1000000'; // 長方形のツールチップより上
-            document.body.appendChild(circleTooltip);
-            
-            // 選択状態を管理する関数
-            function updateSelectedToken(tokenIdx) {{
+            // 選択状態を管理する関数（初回のみ定義）
+            if (!updateSelectedToken) updateSelectedToken = function(tokenIdx) {{
                 const willDeselect = selectedToken === tokenIdx;
                 const hadDuplicate = !!document.querySelector('.duplicate-overall-container');
 
@@ -3331,23 +3406,23 @@ def create_interactive_visualization(
                                 duplicateContributionBox.addEventListener('mouseenter', function() {{
                                     const layerIdx = parseInt(this.dataset.layerIdx, 10);
                                     const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
-                                    globalTooltip.textContent = `Layer ${{layerIdx}}, Target token ${{colTokenIdx}}: ${{tokenLabelAt(colTokenIdx)}}`;
+                                    globalTooltipEl.textContent = `Layer ${{layerIdx}}, Target token ${{colTokenIdx}}: ${{tokenLabelAt(colTokenIdx)}}`;
                                     const rect = this.getBoundingClientRect();
-                                    globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                                    globalTooltip.style.top = (rect.top - 5) + 'px';
-                                    globalTooltip.style.transform = 'translate(-50%, -100%)';
-                                    globalTooltip.style.display = 'block';
+                                    globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
+                                    globalTooltipEl.style.top = (rect.top - 5) + 'px';
+                                    globalTooltipEl.style.transform = 'translate(-50%, -100%)';
+                                    globalTooltipEl.style.display = 'block';
                                     applyBoxHoverHighlight(colTokenIdx, this);
                                 }});
                                 duplicateContributionBox.addEventListener('mouseleave', function() {{
-                                    globalTooltip.style.display = 'none';
+                                    globalTooltipEl.style.display = 'none';
                                     const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
                                     clearBoxHoverHighlight(colTokenIdx, this);
                                 }});
                                 duplicateContributionBox.addEventListener('mousemove', function() {{
                                     const rect = this.getBoundingClientRect();
-                                    globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                                    globalTooltip.style.top = (rect.top - 5) + 'px';
+                                    globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
+                                    globalTooltipEl.style.top = (rect.top - 5) + 'px';
                                 }});
                                 
                                 // duplicateContributionBoxはアニメーション後に追加されるため、ここでは追加しない
@@ -3416,10 +3491,17 @@ def create_interactive_visualization(
                     return;
                 }}
                 applySelectionChange();
-            }}
+            }};
             
-            // 各Layerについて表示
-            for (let layer = 0; layer < numLayersToShow; layer++) {{
+            vizBuildGeneration += 1;
+            const buildToken = vizBuildGeneration;
+            let nextLayer = 0;
+
+            function buildLayerChunk() {{
+                if (buildToken !== vizBuildGeneration) return;
+                const chunk = document.createDocumentFragment();
+                const endLayer = Math.min(nextLayer + VIZ_LAYERS_PER_FRAME, numLayersToShow);
+                for (let layer = nextLayer; layer < endLayer; layer++) {{
                 const layerTop = getLayerTop(layer);
 
                 const layerLabel = document.createElement('div');
@@ -3434,7 +3516,7 @@ def create_interactive_visualization(
                     e.stopPropagation();
                     applyLayerFocus(layer);
                 }});
-                container.appendChild(layerLabel);
+                chunk.appendChild(layerLabel);
                 
                 // 各Tokenについて貢献度を表示
                 for (let tokenIdx = 0; tokenIdx < numTokensToShow; tokenIdx++) {{
@@ -3516,24 +3598,24 @@ def create_interactive_visualization(
                     contributionBox.addEventListener('mouseenter', function() {{
                         const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
                         const layerIdx = parseInt(this.dataset.layerIdx, 10);
-                        globalTooltip.textContent = `Layer ${{layerIdx}}, Target token ${{colTokenIdx}}: ${{tokenLabelAt(colTokenIdx)}}`;
+                        globalTooltipEl.textContent = `Layer ${{layerIdx}}, Target token ${{colTokenIdx}}: ${{tokenLabelAt(colTokenIdx)}}`;
                         const rect = this.getBoundingClientRect();
-                        globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                        globalTooltip.style.top = (rect.top - 5) + 'px';
-                        globalTooltip.style.transform = 'translate(-50%, -100%)';
-                        globalTooltip.style.display = 'block';
+                        globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
+                        globalTooltipEl.style.top = (rect.top - 5) + 'px';
+                        globalTooltipEl.style.transform = 'translate(-50%, -100%)';
+                        globalTooltipEl.style.display = 'block';
                         applyBoxHoverHighlight(colTokenIdx, this);
                     }});
                     contributionBox.addEventListener('mouseleave', function() {{
-                        globalTooltip.style.display = 'none';
+                        globalTooltipEl.style.display = 'none';
                         const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
                         clearBoxHoverHighlight(colTokenIdx, this);
                         refreshLayerLabelFromSelection();
                     }});
                     contributionBox.addEventListener('mousemove', function() {{
                         const rect = this.getBoundingClientRect();
-                        globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                        globalTooltip.style.top = (rect.top - 5) + 'px';
+                        globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
+                        globalTooltipEl.style.top = (rect.top - 5) + 'px';
                     }});
                     tokenLabel.addEventListener('mouseenter', function(e) {{
                         e.stopPropagation();
@@ -3641,10 +3723,7 @@ def create_interactive_visualization(
                                 circle.style.backgroundColor = '#2196F3'; // 通常の青
                             }}
                             circle.title = `Token ${{idx}}: ${{tokenLabelAt(idx)}}\\nValue: ${{value.toFixed(4)}}`;
-                            
-                            // 円のコンテナにホバーイベントを追加（スロット全体でホバー可能）
                             circleContainer.style.cursor = 'pointer';
-                            circleContainer.title = `Token ${{idx}}: ${{tokenLabelAt(idx)}}\\nValue: ${{value.toFixed(4)}}`;
                             
                             // 円の位置を記録（レンダリング後に更新）
                             if (!circlePositions[layer]) {{
@@ -3660,45 +3739,8 @@ def create_interactive_visualization(
                                 size: normalizedSize
                             }};
                             
-                            // 円のホバーイベント（Token名と貢献度%を表示）
                             const contributionPercent = totalContribution > 0 ? ((Math.abs(value) / totalContribution) * 100).toFixed(2) : '0.00';
-                            
-                            // ホバーイベント関数
-                            const showTooltip = function(rect) {{
-                                circleTooltip.textContent = `Token ${{idx}}: ${{tokenLabelAt(idx)}} (${{contributionPercent}}%)`;
-                                circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                                circleTooltip.style.top = (rect.top - 5) + 'px';
-                                circleTooltip.style.transform = 'translate(-50%, -100%)';
-                                circleTooltip.style.display = 'block';
-                            }};
-                            
-                            const hideTooltip = function() {{
-                                circleTooltip.style.display = 'none';
-                            }};
-                            
-                            // 円自体にホバーイベントを追加
-                            circle.addEventListener('mouseenter', function() {{
-                                const rect = this.getBoundingClientRect();
-                                showTooltip(rect);
-                            }});
-                            circle.addEventListener('mouseleave', hideTooltip);
-                            circle.addEventListener('mousemove', function() {{
-                                const rect = this.getBoundingClientRect();
-                                circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                                circleTooltip.style.top = (rect.top - 5) + 'px';
-                            }});
-                            
-                            // コンテナにもホバーイベントを追加（スロット全体でホバー可能）
-                            circleContainer.addEventListener('mouseenter', function() {{
-                                const rect = this.getBoundingClientRect();
-                                showTooltip(rect);
-                            }});
-                            circleContainer.addEventListener('mouseleave', hideTooltip);
-                            circleContainer.addEventListener('mousemove', function() {{
-                                const rect = this.getBoundingClientRect();
-                                circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
-                                circleTooltip.style.top = (rect.top - 5) + 'px';
-                            }});
+                            circle.dataset.contributionPct = contributionPercent + '%';
                             
                             // 選択されたTokenの円は透過率を下げる（周りより少し高い透過率）
                             if (tokenIdx === selectedToken) {{
@@ -3727,9 +3769,18 @@ def create_interactive_visualization(
                 
                     contributionBox.appendChild(bar);
                     wrapper.appendChild(contributionBox);
-                    container.appendChild(wrapper);
+                    chunk.appendChild(wrapper);
                 }}
             }}
+                container.appendChild(chunk);
+                nextLayer = endLayer;
+                if (nextLayer < numLayersToShow) {{
+                    requestAnimationFrame(buildLayerChunk);
+                }} else if (typeof onComplete === 'function') {{
+                    onComplete();
+                }}
+            }}
+            buildLayerChunk();
             }}
 
             // 円の位置を更新し、Layer間の線を描画する関数
@@ -4204,11 +4255,11 @@ def create_interactive_visualization(
                 if (!duplicateOverallContainer) return;
                 duplicateOverallContainer.classList.add('z2z-dup-entering');
                 setContainerWidthTransition(true);
-                recalcLayoutMetrics();
+                scheduleRecalcLayoutMetrics();
                 requestAnimationFrame(() => {{
                     requestAnimationFrame(() => {{
                         duplicateOverallContainer.classList.remove('z2z-dup-entering');
-                        recalcLayoutMetrics();
+                        scheduleRecalcLayoutMetrics();
                         syncContainerHeight();
                         syncVizScrollCenter();
                     }});
@@ -4497,16 +4548,37 @@ def create_interactive_visualization(
             if (layoutRoot) layoutRoot.addEventListener('click', handleVizBackgroundClick);
 
             function runInitialVisualization() {{
-                recalcLayoutMetrics();
-                buildVisualization();
-                updateTokenAxisLabels();
-                requestAnimationFrame(() => {{
-                    updateCirclePositionsAndDrawPaths();
-                    syncContainerHeight();
-                    syncVizScrollCenter();
-                }});
+                const vizRoot = document.getElementById('z2z-layout-root');
+                if (vizRoot) vizRoot.classList.add('z2z-demo-loading');
+                const boot = () => {{
+                    recalcLayoutMetrics();
+                    buildVisualization(() => {{
+                        updateTokenAxisLabels();
+                        requestAnimationFrame(() => {{
+                            updateCirclePositionsAndDrawPaths();
+                            syncContainerHeight();
+                            syncVizScrollCenter();
+                            if (vizRoot) vizRoot.classList.remove('z2z-demo-loading');
+                        }});
+                    }});
+                }};
+                if (typeof ensureDemoLoaded === 'function' && (!z2zData || !tokens)) {{
+                    ensureDemoLoaded(currentSampleId, currentSourceId).then(demo => {{
+                        if (!demo) {{
+                            if (vizRoot) vizRoot.classList.remove('z2z-demo-loading');
+                            return;
+                        }}
+                        z2zData = demo.z2zData;
+                        tokens = demo.tokens;
+                        boot();
+                    }}).catch(() => {{
+                        if (vizRoot) vizRoot.classList.remove('z2z-demo-loading');
+                    }});
+                }} else {{
+                    scheduleDeferred(boot, 200);
+                }}
             }}
-            scheduleDeferred(runInitialVisualization, 200);
+            runInitialVisualization();
 
             (function initEmbedBridge() {{
                 const queryEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
@@ -4595,9 +4667,11 @@ def render_z2z_multi_html(
     initial_sample_id = initial_sample_id or next(iter(demo_matrix))
     initial_source_id = initial_source_id or demo_sources[0]["id"]
     first = demo_matrix[initial_sample_id][initial_source_id]
+    init_z2z = first.get("z2z_data", [])
+    init_tokens = first.get("tokens", [])
     return create_interactive_visualization(
-        z2z_data=first["z2z_data"],
-        tokens=first["tokens"],
+        z2z_data=init_z2z,
+        tokens=init_tokens,
         layer=0,
         target_token=target_token,
         num_layers=num_layers,
