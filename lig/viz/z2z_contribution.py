@@ -1383,7 +1383,7 @@ def create_interactive_visualization(
                 flex: 0 1 auto;
                 order: 1;
                 min-width: min-content;
-                max-width: 100%;
+                max-width: none;
                 overflow: visible;
             }}
             #container {{
@@ -1392,7 +1392,8 @@ def create_interactive_visualization(
                 overflow: visible;
                 margin-left: auto;
                 margin-right: auto;
-                max-width: 100%;
+                max-width: none;
+                box-sizing: border-box;
             }}
             .z2z-layout-normal {{
                 margin-left: auto;
@@ -2947,9 +2948,12 @@ def create_interactive_visualization(
                     maxCircleSizeFixed = 42;
                 }}
                 const leftGutter = applyContainerLeftGutter();
+                const hasDuplicatePanel = !!document.querySelector('.duplicate-overall-container') || selectedToken !== null;
+                container.style.paddingRight = (hasDuplicatePanel ? duplicatePanelRightMargin : 16) + 'px';
                 container.style.width = measureContainerContentWidth() + 'px';
                 container.style.maxWidth = 'none';
                 container.style.overflowX = 'visible';
+                repositionTargetAxisCaptionY();
                 const estimatedBottom = estimateVisualizationBottom();
                 container.style.paddingBottom = layoutContainerBottomMargin + 'px';
                 container.style.minHeight = (estimatedBottom + layoutContainerBottomMargin) + 'px';
@@ -3980,6 +3984,7 @@ def create_interactive_visualization(
             const sourceAxisCaptionOffset = 28;
             const axisCaptionEdgeMargin = 10;
             const axisCaptionLeftGutterMin = 160;
+            const duplicatePanelRightMargin = 48;
 
             function setContainerWidthTransition(enabled) {{
                 if (enabled) {{
@@ -4031,15 +4036,20 @@ def create_interactive_visualization(
 
             function measureContainerContentWidth() {{
                 const leftGutter = parseFloat(container.style.paddingLeft) || axisCaptionLeftGutterMin;
+                const rightPad = parseFloat(container.style.paddingRight) || 0;
                 const tokenLabelWidth = 120;
                 const boxPad = 20;
                 const vizWidth = tokenLabelWidth + 10 + boxPad + numTokensToShow * circleSlotSize + 40;
-                let width = leftGutter + vizWidth;
+                let width = leftGutter + vizWidth + rightPad;
                 const duplicateOverallContainer = document.querySelector('.duplicate-overall-container');
                 if (duplicateOverallContainer) {{
-                    width = Math.max(width, duplicateOverallContainer.offsetLeft + duplicateOverallContainer.offsetWidth + 24);
+                    const layoutRight = duplicateOverallContainer.offsetLeft + duplicateOverallContainer.offsetWidth;
+                    width = Math.max(width, layoutRight + duplicatePanelRightMargin);
+                    const containerRect = container.getBoundingClientRect();
+                    const dupRect = duplicateOverallContainer.getBoundingClientRect();
+                    width = Math.max(width, dupRect.right - containerRect.left + duplicatePanelRightMargin);
                 }} else if (selectedToken !== null) {{
-                    width = Math.max(width, estimateDuplicatePanelRightEdge(selectedToken));
+                    width = Math.max(width, estimateDuplicatePanelRightEdge(selectedToken) + duplicatePanelRightMargin);
                 }}
                 return width;
             }}
@@ -4066,8 +4076,21 @@ def create_interactive_visualization(
                 requestAnimationFrame(() => {{
                     requestAnimationFrame(() => {{
                         duplicateOverallContainer.classList.remove('z2z-dup-entering');
+                        recalcLayoutMetrics();
+                        syncContainerHeight();
                     }});
                 }});
+            }}
+
+            function getMidLayerCenterY() {{
+                const midLayer = Math.floor(numLayersToShow / 2);
+                return getLayerTop(midLayer) + circleSlotSize / 2;
+            }}
+
+            function repositionTargetAxisCaptionY() {{
+                const targetCap = document.getElementById('targetTokenAxisCaption');
+                if (!targetCap) return;
+                positionTargetAxisCaption(targetCap, getMidLayerCenterY());
             }}
 
             function applyContainerLeftGutter() {{
@@ -4079,8 +4102,7 @@ def create_interactive_visualization(
                     return gutter;
                 }}
 
-                targetCap.style.transform = 'rotate(-90deg)';
-                targetCap.style.transformOrigin = 'left center';
+                repositionTargetAxisCaptionY();
                 const captionHeight = targetCap.offsetHeight;
                 const captionWidth = targetCap.offsetWidth;
                 const heuristic = Math.max(
@@ -4090,8 +4112,7 @@ def create_interactive_visualization(
 
                 for (let attempt = 0; attempt < 6; attempt += 1) {{
                     container.style.paddingLeft = gutter + 'px';
-                    targetCap.style.left = (-captionHeight) + 'px';
-                    targetCap.style.top = '0px';
+                    repositionTargetAxisCaptionY();
                     const containerRect = container.getBoundingClientRect();
                     const captionRect = targetCap.getBoundingClientRect();
                     const deficit = axisCaptionEdgeMargin - (captionRect.left - containerRect.left);
@@ -4102,6 +4123,7 @@ def create_interactive_visualization(
                 if (layerOverflow > 0) {{
                     gutter += Math.ceil(layerOverflow);
                     container.style.paddingLeft = gutter + 'px';
+                    repositionTargetAxisCaptionY();
                 }}
                 syncVizScrollGutter(gutter);
                 return gutter;
@@ -4164,10 +4186,8 @@ def create_interactive_visualization(
                 const bottomCap = document.getElementById('tokenAxisCaptionBottom');
                 if (!targetCap || !topCap || !bottomCap) return;
 
-                const leftGutter = applyContainerLeftGutter();
-                const midLayer = Math.floor(numLayersToShow / 2);
-                const midLayerCenterY = getLayerTop(midLayer) + circleSlotSize / 2;
-                positionTargetAxisCaption(targetCap, midLayerCenterY);
+                applyContainerLeftGutter();
+                positionTargetAxisCaption(targetCap, getMidLayerCenterY());
 
                 const topBounds = measureTokenAxisLabelBounds('.token-axis-label-top');
                 if (topBounds) {{
