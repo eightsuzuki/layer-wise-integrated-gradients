@@ -1244,15 +1244,9 @@ def create_interactive_visualization(
             body.lig-demo-embed .z2z-viz-section,
             html.lig-iframe-embed .z2z-viz-section {{
                 margin: 8px auto 0;
-                justify-content: center;
                 width: 100%;
                 max-width: 100%;
                 padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
-            }}
-            body.lig-demo-embed .z2z-viz-scroll,
-            html.lig-iframe-embed .z2z-viz-scroll {{
-                box-sizing: border-box;
-                padding-right: calc(min(220px, calc(100vw - 16px)) + 12px);
             }}
             body.lig-demo-embed .controls-panel,
             html.lig-iframe-embed .controls-panel {{
@@ -1260,10 +1254,15 @@ def create_interactive_visualization(
                 top: max(8px, env(safe-area-inset-top, 0px));
                 right: max(8px, env(safe-area-inset-right, 0px));
                 left: auto;
+                grid-column: auto;
+                grid-row: auto;
+                justify-self: auto;
+                align-self: auto;
                 z-index: 10;
                 width: min(220px, calc(100vw - 16px));
                 max-width: calc(100vw - 16px);
                 max-height: calc(100vh - 16px);
+                margin: 0;
                 font-size: 12px;
                 box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
             }}
@@ -1320,12 +1319,9 @@ def create_interactive_visualization(
                 opacity: 1;
             }}
             .z2z-viz-section {{
-                display: flex;
-                flex-direction: row;
-                align-items: flex-start;
-                justify-content: center;
-                flex-wrap: nowrap;
-                gap: 12px;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: auto;
                 width: 100%;
                 max-width: 100%;
                 min-width: 0;
@@ -1346,12 +1342,12 @@ def create_interactive_visualization(
             }}
             .z2z-viz-scroll {{
                 display: flex;
-                flex: 1 1 0;
-                order: 1;
+                grid-column: 1;
+                grid-row: 1;
                 align-items: flex-start;
                 position: relative;
-                z-index: 2;
-                width: auto;
+                z-index: 1;
+                width: 100%;
                 max-width: 100%;
                 min-width: 0;
                 overflow-x: auto;
@@ -1391,15 +1387,16 @@ def create_interactive_visualization(
                 padding-bottom: 2rem;
             }}
             .controls-panel {{
+                grid-column: 1;
+                grid-row: 1;
+                justify-self: end;
+                align-self: start;
                 position: sticky;
                 top: max(12px, env(safe-area-inset-top, 0px));
-                flex: 0 0 auto;
-                order: 2;
-                align-self: flex-start;
-                z-index: 1;
+                z-index: 10;
                 width: min(280px, calc(100vw - 24px));
                 max-width: min(280px, calc(100% - 8px));
-                margin: 0;
+                margin: max(12px, env(safe-area-inset-top, 0px)) max(0px, env(safe-area-inset-right, 0px)) 0 0;
                 box-sizing: border-box;
                 max-height: calc(100vh - 24px);
                 overflow: hidden;
@@ -1410,6 +1407,7 @@ def create_interactive_visualization(
                 box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
                 padding: 0;
                 font-size: 13px;
+                pointer-events: auto;
             }}
             .controls-panel.is-expanded .controls-panel-body {{
                 max-height: calc(100vh - 24px - 40px);
@@ -1489,39 +1487,10 @@ def create_interactive_visualization(
                 margin-right: 0;
                 width: auto;
             }}
-            @media (max-width: 1100px) {{
-                body.lig-site:not(.lig-demo-embed) .z2z-viz-section {{
-                    flex-direction: column;
-                    align-items: center;
-                }}
-                body.lig-site:not(.lig-demo-embed) .controls-panel {{
-                    position: static;
-                    order: -1;
-                    top: auto;
-                    width: min(280px, 100%);
-                    max-width: min(280px, calc(100vw - 24px));
-                    max-height: none;
-                    margin: 0 auto 12px auto;
-                    align-self: center;
-                }}
-                body.lig-site:not(.lig-demo-embed) .controls-panel.is-expanded .controls-panel-body {{
-                    max-height: min(55vh, 420px);
-                }}
-            }}
             @media (max-width: 960px) {{
-                .z2z-viz-section {{
-                    flex-direction: column;
-                    align-items: center;
-                }}
                 .controls-panel {{
-                    position: static;
-                    order: -1;
-                    top: auto;
-                    width: min(280px, 100%);
-                    max-width: min(280px, calc(100vw - 24px));
-                    max-height: none;
-                    margin: 0 auto 12px auto;
-                    align-self: center;
+                    width: min(240px, calc(100vw - 24px));
+                    max-width: min(240px, calc(100% - 8px));
                     font-size: 12px;
                 }}
                 .controls-panel.is-expanded .controls-panel-body {{
@@ -1535,19 +1504,12 @@ def create_interactive_visualization(
             @media (max-width: 520px) {{
                 body.lig-demo-embed .controls-panel,
                 html.lig-iframe-embed .controls-panel {{
-                    position: static;
-                    width: 100%;
-                    max-width: 100%;
-                    margin: 0 0 12px 0;
+                    width: min(220px, calc(100vw - 16px));
+                    max-width: calc(100vw - 16px);
                 }}
                 body.lig-demo-embed .z2z-page-header,
                 html.lig-iframe-embed .z2z-page-header {{
                     padding-right: max(8px, env(safe-area-inset-right, 0px));
-                }}
-                body.lig-demo-embed .z2z-viz-section,
-                html.lig-iframe-embed .z2z-viz-section {{
-                    flex-direction: column;
-                    align-items: stretch;
                 }}
                 .curve-preset-btn {{
                     flex: 1 1 100%;
@@ -2697,7 +2659,7 @@ def create_interactive_visualization(
             function getDuplicatePanelTop(layerAlignedTop) {{
                 const baseTop = layerAlignedTop + duplicatePanelTopOffset;
                 const panel = document.getElementById('displayOptionsPanel');
-                if (!panel || window.matchMedia('(max-width: 960px)').matches) {{
+                if (!panel) {{
                     return baseTop;
                 }}
                 const containerRect = container.getBoundingClientRect();
