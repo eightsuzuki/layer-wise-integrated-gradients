@@ -44,6 +44,18 @@ def load_demo_payload(path: str) -> tuple[list, list[str], str]:
     return z2z_data, tokens, data.get("text", "")
 
 
+def compact_z2z_matrix(
+    z2z_data: List[List[List[float]]],
+    *,
+    ndigits: int = 5,
+) -> List[List[List[float]]]:
+    """Round z2z values for smaller embedded demo JSON (visual fidelity preserved)."""
+    return [
+        [[round(float(v), ndigits) for v in row] for row in layer]
+        for layer in z2z_data
+    ]
+
+
 def demo_site_head_assets(*, css_href: str = "../lig-hero.css") -> str:
     """Shared hero stylesheet and Inter font for GitHub Pages demos."""
     css = html_module.escape(css_href)
@@ -67,7 +79,7 @@ def demo_site_particles_scripts(*, js_href: str = "../js/particles.min.js") -> s
         if (!el || typeof particlesJS !== 'function') return;
         particlesJS('lig-particles', {{
           particles: {{
-            number: {{ value: 80, density: {{ enable: true, value_area: 680 }} }},
+            number: {{ value: 45, density: {{ enable: true, value_area: 680 }} }},
             color: {{ value: ['#0d9488', '#14b8a6', '#5eead4'] }},
             shape: {{ type: 'circle' }},
             opacity: {{
@@ -104,10 +116,17 @@ def demo_site_particles_scripts(*, js_href: str = "../js/particles.min.js") -> s
           retina_detect: true
         }});
       }}
+      function scheduleHeroParticles() {{
+        if (typeof requestIdleCallback === 'function') {{
+          requestIdleCallback(initHeroParticles, {{ timeout: 1200 }});
+        }} else {{
+          setTimeout(initHeroParticles, 200);
+        }}
+      }}
       if (document.readyState === 'loading') {{
-        document.addEventListener('DOMContentLoaded', initHeroParticles);
+        document.addEventListener('DOMContentLoaded', scheduleHeroParticles);
       }} else {{
-        initHeroParticles();
+        scheduleHeroParticles();
       }}
     }})();
   </script>
@@ -470,19 +489,55 @@ def create_interactive_visualization(
         }
         demo_payload = {
             sample_id: {
-                source_id: {
-                    "z2zData": entry["z2z_data"],
-                    "tokens": entry["tokens"],
-                    "descriptionHtml": entry.get("description_html", ""),
-                }
+                source_id: (
+                    {
+                        "dataUrl": entry["data_url"],
+                        "descriptionHtml": entry.get("description_html", ""),
+                    }
+                    if entry.get("data_url")
+                    else {
+                        "z2zData": compact_z2z_matrix(entry["z2z_data"]),
+                        "tokens": entry["tokens"],
+                        "descriptionHtml": entry.get("description_html", ""),
+                    }
+                )
                 for source_id, entry in sources.items()
             }
             for sample_id, sources in demo_matrix.items()
         }
         script_data_js = f"""
-            const demoMatrix = {json_module.dumps(demo_payload)};
+            const demoMatrix = {json_module.dumps(demo_payload, separators=(',', ':'))};
+            const demoLoadPromises = new Map();
             let currentSampleId = {json_module.dumps(initial_sample_id)};
             let currentSourceId = {json_module.dumps(initial_source_id)};
+            function isDemoEntryLoaded(entry) {{
+                return entry && Array.isArray(entry.z2zData);
+            }}
+            async function ensureDemoLoaded(sampleId, sourceId) {{
+                const entry = demoMatrix[sampleId] && demoMatrix[sampleId][sourceId];
+                if (!entry) return null;
+                if (isDemoEntryLoaded(entry)) return entry;
+                const cacheKey = sampleId + '\\0' + sourceId;
+                if (demoLoadPromises.has(cacheKey)) return demoLoadPromises.get(cacheKey);
+                const promise = fetch(entry.dataUrl)
+                    .then(resp => {{
+                        if (!resp.ok) throw new Error('Failed to load demo data');
+                        return resp.json();
+                    }})
+                    .then(data => {{
+                        entry.z2zData = data.z2zData || data.z2z;
+                        entry.tokens = data.tokens;
+                        delete entry.dataUrl;
+                        demoLoadPromises.delete(cacheKey);
+                        return entry;
+                    }})
+                    .catch(err => {{
+                        demoLoadPromises.delete(cacheKey);
+                        throw err;
+                    }});
+                demoLoadPromises.set(cacheKey, promise);
+                return promise;
+            }}
             function getCurrentDemo() {{
                 return demoMatrix[currentSampleId][currentSourceId];
             }}
@@ -645,27 +700,33 @@ def create_interactive_visualization(
                 updateComposedSummary();
                 const sourceId = resolveDemoSourceId();
                 if (!demoMatrix[sampleId] || !demoMatrix[sampleId][sourceId]) return;
-                if (sampleId === currentSampleId && sourceId === currentSourceId) return;
-                currentSampleId = sampleId;
-                currentSourceId = sourceId;
-                const demo = getCurrentDemo();
-                z2zData = demo.z2zData;
-                tokens = demo.tokens;
-                const descEl = document.getElementById('visualization-description');
-                if (descEl) descEl.innerHTML = demo.descriptionHtml;
-                selectedToken = null;
-                clickedLayer = null;
-                recalcLayoutMetrics();
-                clearVisualization();
-                buildVisualization();
-                updateTokenAxisLabels();
-                setTimeout(() => {
-                    if (selectedToken !== null) {
-                        updateSelectedToken(selectedToken);
-                        updateDuplicateAxisLabels();
-                    }
-                    updateCirclePositionsAndDrawPaths();
-                }, 100);
+                if (sampleId === currentSampleId && sourceId === currentSourceId && isDemoEntryLoaded(getCurrentDemo())) return;
+                const vizRoot = document.getElementById('z2z-layout-root');
+                if (vizRoot) vizRoot.classList.add('z2z-demo-loading');
+                ensureDemoLoaded(sampleId, sourceId).then(demo => {
+                    if (!demo) return;
+                    currentSampleId = sampleId;
+                    currentSourceId = sourceId;
+                    z2zData = demo.z2zData;
+                    tokens = demo.tokens;
+                    const descEl = document.getElementById('visualization-description');
+                    if (descEl) descEl.innerHTML = demo.descriptionHtml;
+                    selectedToken = null;
+                    clickedLayer = null;
+                    recalcLayoutMetrics();
+                    clearVisualization();
+                    buildVisualization();
+                    updateTokenAxisLabels();
+                    requestAnimationFrame(() => {
+                        updateCirclePositionsAndDrawPaths();
+                        syncContainerHeight();
+                    });
+                }).catch(() => {
+                    const descEl = document.getElementById('visualization-description');
+                    if (descEl) descEl.insertAdjacentHTML('beforeend', '<p class="demo-load-error">Failed to load visualization data.</p>');
+                }).finally(() => {
+                    if (vizRoot) vizRoot.classList.remove('z2z-demo-loading');
+                });
             }
             function switchSample(sampleId) {
                 if (sampleId) {
@@ -1578,6 +1639,26 @@ def create_interactive_visualization(
             const isEmbedPage = {'true' if embed_mode else 'false'};
 {script_data_js}
             const container = document.getElementById('container');
+            function scheduleDeferred(fn, timeoutMs) {{
+                if (typeof requestIdleCallback === 'function') {{
+                    requestIdleCallback(fn, {{ timeout: timeoutMs || 400 }});
+                }} else {{
+                    setTimeout(fn, 0);
+                }}
+            }}
+            function throttle(fn, waitMs) {{
+                let timer = null;
+                let pendingArgs = null;
+                return function throttled() {{
+                    pendingArgs = arguments;
+                    if (timer !== null) return;
+                    timer = setTimeout(() => {{
+                        timer = null;
+                        fn.apply(null, pendingArgs);
+                        pendingArgs = null;
+                    }}, waitMs);
+                }};
+            }}
             const pathSvg = document.getElementById('pathSvg');
             const vizScrollEl = document.getElementById('z2zVizScroll');
             const VIZ_LAYOUT_TRANSITION_MS = 420;
