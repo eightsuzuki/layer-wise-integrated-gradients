@@ -1266,7 +1266,44 @@ def create_interactive_visualization(
                 padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
                 box-sizing: border-box;
                 position: relative;
+                overflow: visible;
+            }}
+            .z2z-viz-scroll {{
+                display: flex;
+                flex: 1 1 auto;
+                order: 1;
+                align-items: flex-start;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
                 overflow-x: auto;
+                overflow-y: visible;
+                -webkit-overflow-scrolling: touch;
+                scroll-padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
+            }}
+            .z2z-viz-scroll-lead,
+            .z2z-viz-scroll-trail {{
+                flex: 1 0 0;
+                min-width: 0;
+                pointer-events: none;
+            }}
+            .z2z-viz-scroll-lead {{
+                min-width: var(--z2z-left-gutter, 0px);
+            }}
+            .z2z-viz-scroll-body {{
+                flex: 0 0 auto;
+            }}
+            #container.z2z-container--animate {{
+                transition: width 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+            }}
+            .duplicate-overall-container {{
+                transition: opacity 0.35s ease, transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+                will-change: transform, opacity;
+            }}
+            .duplicate-overall-container.z2z-dup-entering,
+            .duplicate-overall-container.z2z-dup-leaving {{
+                opacity: 0;
+                transform: translateX(28px);
             }}
             body.lig-site:not(.lig-demo-embed) .z2z-viz-section {{
                 background: var(--lig-bg);
@@ -1531,6 +1568,9 @@ def create_interactive_visualization(
             </div>
             </div>
         </div>
+        <div class="z2z-viz-scroll" id="z2zVizScroll">
+            <div class="z2z-viz-scroll-lead" aria-hidden="true"></div>
+            <div class="z2z-viz-scroll-body">
         <div id="z2z-layout-root" class="{layout_root_class}">
         <div id="container" style="position: relative; padding-top: 100px; padding-left: 160px; margin-left: auto; margin-right: auto;">
             <svg id="pathSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 11000;"></svg>
@@ -1541,6 +1581,9 @@ def create_interactive_visualization(
             <div id="tokenAxisLabelsBottom"></div>
         </div>
         </div>
+            </div>
+            <div class="z2z-viz-scroll-trail" aria-hidden="true"></div>
+        </div>
         </div>
         
         <script>
@@ -1550,6 +1593,9 @@ def create_interactive_visualization(
 {script_data_js}
             const container = document.getElementById('container');
             const pathSvg = document.getElementById('pathSvg');
+            const vizScrollEl = document.getElementById('z2zVizScroll');
+            const VIZ_LAYOUT_TRANSITION_MS = 420;
+            let vizLayoutTransitionTimer = null;
 
             let numTokens, numTokensToShow, numLayersToShow, topLayer;
             let circleSlotSize, circleCenterOffset, circleMaxDiameter, maxCircleSizeFixed;
@@ -2963,10 +3009,7 @@ def create_interactive_visualization(
                     maxCircleSizeFixed = 42;
                 }}
                 const leftGutter = applyContainerLeftGutter();
-                const tokenLabelWidth = 120;
-                const boxPad = 20;
-                const vizWidth = tokenLabelWidth + 10 + boxPad + numTokensToShow * circleSlotSize + 40;
-                container.style.width = (leftGutter + vizWidth) + 'px';
+                container.style.width = measureContainerContentWidth() + 'px';
                 container.style.maxWidth = 'none';
                 container.style.overflowX = 'visible';
                 const estimatedBottom = estimateVisualizationBottom();
@@ -3057,6 +3100,10 @@ def create_interactive_visualization(
             
             // 選択状態を管理する関数
             function updateSelectedToken(tokenIdx) {{
+                const willDeselect = selectedToken === tokenIdx;
+                const hadDuplicate = !!document.querySelector('.duplicate-overall-container');
+
+                function applySelectionChange() {{
                 // 既存の複製をすべて削除
                 document.querySelectorAll('.duplicate-overall-container').forEach(container => container.remove());
                 // 複製用のToken軸ラベルも削除
@@ -3136,7 +3183,6 @@ def create_interactive_visualization(
                                     const finalLeft = rightOffset + estimatedBoxWidth + 150;
                                     
                                     // 複製コンテナの位置を計算
-                                    // Layer間隔とLayer数から必要な高さを計算
                                     const duplicateLayerSpacing = 10; // Layer間隔
                                     const axisLabelHeight = 50; // 軸ラベルの高さ
                                     
@@ -3146,7 +3192,6 @@ def create_interactive_visualization(
                                     
                                     // 元の上側Token軸ラベルは複製の有無に影響させない（複製側の軸はduplicateAxisContainer内で表示）
                                     
-                                    // 即座に最終位置に配置（アニメーションなし）
                                     duplicateOverallContainer.style.left = finalLeft + 'px';
                                     duplicateOverallContainer.style.top = finalTop + 'px';
                                     
@@ -3161,9 +3206,10 @@ def create_interactive_visualization(
                                     const bottomPadding = (numLayersToShow * duplicateLayerSpacing) + 30;
                                     duplicateOverallContainer.style.paddingBottom = bottomPadding + 'px';
                                     duplicateOverallContainer.style.overflow = 'visible'; // はみ出しを許可（見切れを防ぐため）
-                                    duplicateOverallContainer.style.opacity = '1'; // 即座に表示
-                                    
+                                    duplicateOverallContainer.style.opacity = '1';
+
                                     container.appendChild(duplicateOverallContainer);
+                                    finishDuplicatePanelIn(duplicateOverallContainer);
                                     
                                     // 複製用のToken軸ラベルコンテナを作成
                                     const duplicateAxisContainer = document.createElement('div');
@@ -3265,7 +3311,6 @@ def create_interactive_visualization(
                                 const originalBoxLeft = originalBoxRect.left - containerRect.left;
                                 const originalBoxTop = originalBoxRect.top - containerRect.top;
                                 
-                                // 即座にduplicateWrapperに追加（アニメーションなし）
                                 duplicateContributionBox.style.position = 'relative';
                                 duplicateContributionBox.style.left = 'auto';
                                 duplicateContributionBox.style.top = 'auto';
@@ -3356,7 +3401,16 @@ def create_interactive_visualization(
                 }}, 50);
                 requestAnimationFrame(() => {{
                     updateCirclePositionsAndDrawPaths();
+                    recalcLayoutMetrics();
+                    syncContainerHeight();
                 }});
+                }}
+
+                if (willDeselect && hadDuplicate) {{
+                    animateDuplicatePanelsOut(applySelectionChange);
+                    return;
+                }}
+                applySelectionChange();
             }}
             
             // 各Layerについて表示
@@ -3989,11 +4043,103 @@ def create_interactive_visualization(
             const axisCaptionEdgeMargin = 10;
             const axisCaptionLeftGutterMin = 160;
 
+            function setContainerWidthTransition(enabled) {{
+                if (enabled) {{
+                    container.classList.add('z2z-container--animate');
+                    if (vizLayoutTransitionTimer) clearTimeout(vizLayoutTransitionTimer);
+                    vizLayoutTransitionTimer = setTimeout(() => {{
+                        container.classList.remove('z2z-container--animate');
+                        vizLayoutTransitionTimer = null;
+                    }}, VIZ_LAYOUT_TRANSITION_MS + 80);
+                    return;
+                }}
+                if (vizLayoutTransitionTimer) {{
+                    clearTimeout(vizLayoutTransitionTimer);
+                    vizLayoutTransitionTimer = null;
+                }}
+                container.classList.remove('z2z-container--animate');
+            }}
+
+            function syncVizScrollGutter(gutterPx) {{
+                if (!vizScrollEl) return;
+                const gutter = typeof gutterPx === 'number'
+                    ? gutterPx
+                    : (parseFloat(container.style.paddingLeft) || axisCaptionLeftGutterMin);
+                vizScrollEl.style.setProperty('--z2z-left-gutter', Math.max(0, Math.round(gutter)) + 'px');
+            }}
+
+            function measureLayerLabelLeftOverflow() {{
+                let overflow = 0;
+                const containerRect = container.getBoundingClientRect();
+                container.querySelectorAll('.layer-label:not(.layer-label-duplicate)').forEach(el => {{
+                    const rect = el.getBoundingClientRect();
+                    overflow = Math.max(overflow, axisCaptionEdgeMargin - (rect.left - containerRect.left));
+                }});
+                return overflow;
+            }}
+
+            function estimateDuplicatePanelRightEdge(tokenIdx) {{
+                const labelWidth = 120;
+                const gap = 10;
+                const boxPaddingLeft = 10;
+                const boxPaddingRight = 10;
+                const circleWidth = circleSlotSize;
+                const estimatedBoxWidth = labelWidth + gap + boxPaddingLeft + (numTokens * circleWidth) + boxPaddingRight;
+                const horizontalSpacing = getTokenHorizontalSpacing();
+                const rightOffset = tokenIdx * horizontalSpacing;
+                const finalLeft = rightOffset + estimatedBoxWidth + 150;
+                return finalLeft + estimatedBoxWidth + 24;
+            }}
+
+            function measureContainerContentWidth() {{
+                const leftGutter = parseFloat(container.style.paddingLeft) || axisCaptionLeftGutterMin;
+                const tokenLabelWidth = 120;
+                const boxPad = 20;
+                const vizWidth = tokenLabelWidth + 10 + boxPad + numTokensToShow * circleSlotSize + 40;
+                let width = leftGutter + vizWidth;
+                const duplicateOverallContainer = document.querySelector('.duplicate-overall-container');
+                if (duplicateOverallContainer) {{
+                    width = Math.max(width, duplicateOverallContainer.offsetLeft + duplicateOverallContainer.offsetWidth + 24);
+                }} else if (selectedToken !== null) {{
+                    width = Math.max(width, estimateDuplicatePanelRightEdge(selectedToken));
+                }}
+                return width;
+            }}
+
+            function animateDuplicatePanelsOut(done) {{
+                const panels = Array.from(document.querySelectorAll('.duplicate-overall-container'));
+                if (panels.length === 0) {{
+                    if (typeof done === 'function') done();
+                    return;
+                }}
+                setContainerWidthTransition(true);
+                panels.forEach(panel => panel.classList.add('z2z-dup-leaving'));
+                setTimeout(() => {{
+                    panels.forEach(panel => panel.remove());
+                    if (typeof done === 'function') done();
+                }}, VIZ_LAYOUT_TRANSITION_MS);
+            }}
+
+            function finishDuplicatePanelIn(duplicateOverallContainer) {{
+                if (!duplicateOverallContainer) return;
+                duplicateOverallContainer.classList.add('z2z-dup-entering');
+                setContainerWidthTransition(true);
+                recalcLayoutMetrics();
+                requestAnimationFrame(() => {{
+                    requestAnimationFrame(() => {{
+                        duplicateOverallContainer.classList.remove('z2z-dup-entering');
+                    }});
+                }});
+            }}
+
             function applyContainerLeftGutter() {{
                 const targetCap = document.getElementById('targetTokenAxisCaption');
                 let gutter = axisCaptionLeftGutterMin;
                 container.style.paddingLeft = gutter + 'px';
-                if (!targetCap) return gutter;
+                if (!targetCap) {{
+                    syncVizScrollGutter(gutter);
+                    return gutter;
+                }}
 
                 targetCap.style.transform = 'rotate(-90deg)';
                 targetCap.style.transformOrigin = 'left center';
@@ -4014,6 +4160,12 @@ def create_interactive_visualization(
                     if (deficit <= 0.5) break;
                     gutter += Math.ceil(deficit);
                 }}
+                const layerOverflow = measureLayerLabelLeftOverflow();
+                if (layerOverflow > 0) {{
+                    gutter += Math.ceil(layerOverflow);
+                    container.style.paddingLeft = gutter + 'px';
+                }}
+                syncVizScrollGutter(gutter);
                 return gutter;
             }}
 
