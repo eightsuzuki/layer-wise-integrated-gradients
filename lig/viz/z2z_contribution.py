@@ -1257,7 +1257,7 @@ def create_interactive_visualization(
                 flex-direction: row;
                 align-items: flex-start;
                 justify-content: center;
-                flex-wrap: wrap;
+                flex-wrap: nowrap;
                 gap: 12px;
                 width: 100%;
                 max-width: 100%;
@@ -1270,10 +1270,10 @@ def create_interactive_visualization(
             }}
             .z2z-viz-scroll {{
                 display: flex;
-                flex: 1 1 auto;
+                flex: 1 1 0;
                 order: 1;
                 align-items: flex-start;
-                width: 100%;
+                width: auto;
                 max-width: 100%;
                 min-width: 0;
                 overflow-x: auto;
