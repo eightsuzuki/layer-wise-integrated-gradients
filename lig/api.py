@@ -12,19 +12,10 @@ import torch
 
 from lig.config import LIGConfig, validate_release_baselines
 
-from utils.calculations.ig.attention.attention_ig import (
-    compute_attention_ig_global_analysis_multi_layer,
-)
-from utils.calculations.ig.attention.attention_map_alpha import (
-    get_encoder_self_attention_alpha,
-)
-from utils.calculations.ig.mlp.att_itb_mlp_baseline import get_mlp_baseline_att_itb_eq_zero
-from utils.calculations.ig.mlp.mlp_lig_ig import compute_mlp_lig_single_token
 from utils.calculations.ig.shared.itb_self_contrib import (
     apply_itb_column_map_ratio,
     apply_itb_column_zero_ratio,
 )
-from utils.calculations.ig.z2z.layer_direct_ig import compute_layer_direct_ig_all_targets
 from utils.calculations.ig.z2z.layer_itb_zero_ratio import apply_layer_z2z_itb_zero_base_ratio
 
 
@@ -87,12 +78,14 @@ def _run_explain(text: str, cfg: LIGConfig) -> Dict[str, Any]:
 
     from lig.adapters.decoder_ig import DECODER_IG_MODEL_TYPES
 
+    if model_type == "gemma3":
+        return _run_explain_gemma3(text, cfg)
     if model_type in DECODER_IG_MODEL_TYPES:
         return _run_explain_decoder(text, cfg, model_type)
     if model_type in DECODER_FAMILY_TYPES:
         raise NotImplementedError(
             f"Decoder model '{cfg.model}' ({model_type}) is not implemented yet. "
-            f"Supported decoder IG: {sorted(DECODER_IG_MODEL_TYPES)}. "
+            f"Supported decoder IG: {sorted(DECODER_IG_MODEL_TYPES | {'gemma3'})}. "
             f"Requested: {modes}. See docs/DECODER_DESIGN.md."
         )
 
@@ -182,6 +175,12 @@ def _run_explain(text: str, cfg: LIGConfig) -> Dict[str, Any]:
                 )
 
             if "mlp" in modes:
+                # Encoder-only implementation. Keep this import out of decoder
+                # startup because it depends on Lightning/TorchMetrics.
+                from utils.calculations.ig.mlp.mlp_lig_ig import (
+                    compute_mlp_lig_single_token,
+                )
+
                 u_j = adapter.u_from_z(layer_idx, z_layer, attention_mask, t_idx)
                 baseline_u = _mlp_baseline(
                     adapter=adapter,
@@ -374,6 +373,243 @@ def _run_explain_gpt2_att(text: str, cfg: LIGConfig) -> Dict[str, Any]:
     return _run_explain_gpt2(text, narrow)
 
 
+def _gemma3_baseline_embeddings(
+    input_embeddings: torch.Tensor,
+    baseline_method: str,
+    target_token_idx: int,
+) -> torch.Tensor:
+    if baseline_method in ("zero", "itb_zero_ratio"):
+        return torch.zeros_like(input_embeddings)
+    if baseline_method in ("self_input_token", "itb_map_ratio"):
+        z_j = input_embeddings[0, target_token_idx, :].clone()
+        return z_j.unsqueeze(0).unsqueeze(0).expand_as(input_embeddings)
+    raise ValueError(
+        "Gemma3 baseline_att must be one of "
+        "{'zero', 'self_input_token', 'itb_zero_ratio', 'itb_map_ratio'}. "
+        f"Got: {baseline_method!r}"
+    )
+
+
+def _run_explain_gemma3(text: str, cfg: LIGConfig) -> Dict[str, Any]:
+    """Gemma3 decoder: z→u (ATT), u→z (MLP), z→z (layer) with pre+post-LN blocks."""
+    import warnings
+
+    # Gemma3 is multimodal, so Transformers probes torchvision while importing
+    # its model class. LIG uses only the language model; disabling this optional
+    # vision dependency also lets text analysis run when torchvision is absent
+    # or binary-incompatible with the installed PyTorch.
+    import transformers.utils.import_utils as transformers_import_utils
+
+    transformers_import_utils._torchvision_available = False
+
+    from transformers import AutoModel, AutoTokenizer
+
+    from lig.boundaries import detect_boundaries
+    from utils.calculations.ig.gemma3.block_forward import (
+        attn_pre_oproj_output,
+        embed_tokens,
+        get_gemma3_text_model,
+        layer_attention_mask,
+        rope_position_embeddings,
+    )
+    from utils.calculations.ig.mlp.gemma3_mlp_lig_ig import compute_gemma3_mlp_lig_single_token
+
+    modes = cfg.resolved_granularity()
+    if cfg.baseline_mlp not in ("zero", "att_itb_a0"):
+        raise NotImplementedError(
+            "Gemma3 u→z supports baseline_mlp in {'zero', 'att_itb_a0'} only. "
+            f"Got: {cfg.baseline_mlp!r}"
+        )
+
+    device = torch.device(cfg.device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    loaded = AutoModel.from_pretrained(
+        cfg.model,
+        attn_implementation="eager",
+        torch_dtype=torch.float32,
+    ).to(device)
+    loaded.eval()
+    text_model = get_gemma3_text_model(loaded)
+    text_model.eval()
+    boundaries = detect_boundaries(text_model)
+    tokenizer = AutoTokenizer.from_pretrained(cfg.model)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    encoded = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    input_ids = encoded["input_ids"].to(device)
+    seq_len = int(input_ids.shape[1])
+    tokens = tokenizer.convert_ids_to_tokens(input_ids[0].tolist())
+
+    with torch.no_grad():
+        input_embeddings = embed_tokens(text_model, input_ids)
+        hs_out = text_model(
+            inputs_embeds=input_embeddings,
+            output_hidden_states=True,
+            use_cache=False,
+        )
+        hidden_states = hs_out.hidden_states
+    assert hidden_states is not None
+
+    n_layers = int(text_model.config.num_hidden_layers)
+    n_heads = int(text_model.config.num_attention_heads)
+    layer_indices = cfg.layers if cfg.layers is not None else list(range(n_layers))
+    token_indices = cfg.target_tokens if cfg.target_tokens is not None else list(range(seq_len))
+    token_indices = [i for i in token_indices if 0 <= i < seq_len]
+    if not token_indices:
+        raise ValueError(f"No valid target_tokens for seq_len={seq_len}")
+    head_indices = (
+        [cfg.target_head] if cfg.target_head is not None else list(range(n_heads))
+    )
+
+    if "att" in modes and (cfg.layers is None or cfg.target_tokens is None or cfg.target_head is None):
+        warnings.warn(
+            "Gemma3 ATT IG over all layers/tokens/heads is expensive "
+            f"(n_layer={n_layers}, seq_len={seq_len}, n_head={n_heads}). "
+            "Prefer layers=, target_tokens=, and target_head=.",
+            stacklevel=2,
+        )
+
+    result: Dict[str, Any] = {
+        "text": text,
+        "tokens": tokens,
+        "model": cfg.model,
+        "model_type": "gemma3",
+        "architecture": "decoder",
+        "config": {
+            "num_steps": cfg.num_steps,
+            "granularity": modes,
+            "baseline_att": cfg.baseline_att,
+            "baseline_mlp": cfg.baseline_mlp,
+            "baseline_layer": cfg.baseline_layer,
+            "layers": layer_indices,
+            "target_tokens": token_indices,
+            "target_head": cfg.target_head,
+            "include_residual_connection": cfg.include_residual_connection,
+        },
+        "boundaries": {
+            "z": boundaries.z_node,
+            "u": boundaries.u_node,
+            "z_next": boundaries.z_next_node,
+            **boundaries.as_dict(),
+        },
+        "layers": {},
+    }
+
+    for layer_idx in layer_indices:
+        z_layer = hidden_states[layer_idx]
+        layer_out: Dict[str, Any] = {"layer_idx": layer_idx}
+        mask = layer_attention_mask(text_model, layer_idx, seq_len, device, z_layer.dtype)
+        global_pe, local_pe = rope_position_embeddings(text_model, z_layer)
+        gemma_att_itb_u_cache: Dict[str, torch.Tensor] = {}
+        gemma_u_pre_full: torch.Tensor | None = None
+        if "mlp" in modes:
+            block = text_model.layers[layer_idx]
+            pe = local_pe if block.self_attn.is_sliding else global_pe
+            with torch.no_grad():
+                gemma_u_pre_full = attn_pre_oproj_output(
+                    block,
+                    block.input_layernorm(z_layer),
+                    mask,
+                    pe,
+                )
+
+        if "layer" in modes:
+            matrix = _compute_gemma3_layer_z2z(
+                text_model=text_model,
+                z_layer=z_layer,
+                layer_idx=layer_idx,
+                cfg=cfg,
+            )
+            layer_out["z2z"] = {
+                "baseline": cfg.baseline_layer,
+                "description": "Layer-whole IG (z -> z), Gemma3 pre+post-LN block, L2-scalarized",
+                "shape": [int(matrix.shape[0]), int(matrix.shape[1])],
+                "matrix": _tolist(matrix),
+                "token_to_token": _matrix_with_labels(matrix, tokens, token_indices),
+            }
+
+        targets_out: Dict[str, Any] = {}
+        for t_idx in token_indices:
+            target_entry: Dict[str, Any] = {
+                "target_token_idx": t_idx,
+                "target_token": tokens[t_idx],
+            }
+
+            if "att" in modes:
+                target_entry["z2u"] = {
+                    "baseline": cfg.baseline_att,
+                    "description": (
+                        "ATT IG (z -> u), Gemma3 causal/sliding; per-head scores from "
+                        "pre-o_proj attention output (head_dim space; not residual dim)"
+                    ),
+                    "heads": {},
+                }
+                for h_idx in head_indices:
+                    scores = _gemma3_att_head_contributions(
+                        text_model=text_model,
+                        input_embeddings=input_embeddings,
+                        layer_idx=layer_idx,
+                        target_token_idx=t_idx,
+                        head_idx=h_idx,
+                        baseline_att=cfg.baseline_att,
+                        num_steps=cfg.num_steps,
+                    )
+                    target_entry["z2u"]["heads"][str(h_idx)] = {
+                        "contributions": scores,
+                        "token_l2_norm": float(np.linalg.norm(scores)),
+                    }
+
+            if "mlp" in modes:
+                assert gemma_u_pre_full is not None
+                u_pre_j = gemma_u_pre_full[0, t_idx, :].clone()
+                baseline_u_pre = _gemma3_mlp_baseline_u_pre(
+                    text_model=text_model,
+                    baseline_mlp=cfg.baseline_mlp,
+                    input_embeddings=input_embeddings,
+                    layer_idx=layer_idx,
+                    target_token_idx=t_idx,
+                    u_pre_j=u_pre_j,
+                    cache=gemma_att_itb_u_cache,
+                )
+                mlp = compute_gemma3_mlp_lig_single_token(
+                    text_model,
+                    layer_idx=layer_idx,
+                    z_layer=z_layer,
+                    target_mlp_input=u_pre_j.unsqueeze(0),
+                    baseline_mlp_input=baseline_u_pre.unsqueeze(0),
+                    target_token_idx=t_idx,
+                    num_steps=cfg.num_steps,
+                    include_residual_connection=cfg.include_residual_connection,
+                )
+                target_entry["u2z"] = {
+                    "baseline": cfg.baseline_mlp,
+                    "description": (
+                        "Downstream IG (u -> z), Gemma3 concatenated heads before the "
+                        "attention output projection to z^(l+1), including output projection, "
+                        "post-attention RMSNorm, fixed z residual, and FFN, L2-scalarized"
+                    ),
+                    "contributions": mlp["contributions"],
+                    "input_width": mlp["input_width"],
+                    "head_shape": [
+                        int(text_model.config.num_attention_heads),
+                        int(text_model.config.head_dim),
+                    ],
+                    "l2_total": mlp["l2_total"],
+                    "completeness": {
+                        "mean_abs_error": mlp["mean_abs_completeness_error"],
+                        "max_abs_error": mlp["max_abs_completeness_error"],
+                    },
+                }
+
+            targets_out[str(t_idx)] = target_entry
+
+        if "att" in modes or "mlp" in modes:
+            layer_out["targets"] = targets_out
+        result["layers"][str(layer_idx)] = layer_out
+
+    return result
+
+
 def _encoder_z2u(
     *,
     adapter: Any,
@@ -422,6 +658,11 @@ def _att_ig_column_scores(
     baseline_method: str,
     num_steps: int,
 ) -> List[float]:
+    # Encoder-only implementation; importing it eagerly also imports Lightning.
+    from utils.calculations.ig.attention.attention_ig import (
+        compute_attention_ig_global_analysis_multi_layer,
+    )
+
     att = compute_attention_ig_global_analysis_multi_layer(
         bert_model=model,
         inputs=inputs,
@@ -473,6 +714,10 @@ def _encoder_att_head_contributions(
             )
             out = apply_itb_column_zero_ratio(itb, zero, target_token_idx)
         else:
+            from utils.calculations.ig.attention.attention_map_alpha import (
+                get_encoder_self_attention_alpha,
+            )
+
             alpha = get_encoder_self_attention_alpha(
                 adapter.model,
                 ig_inputs,
@@ -502,6 +747,10 @@ def _compute_encoder_layer_z2z(
     layer_idx: int,
     cfg: LIGConfig,
 ) -> np.ndarray:
+    from utils.calculations.ig.z2z.layer_direct_ig import (
+        compute_layer_direct_ig_all_targets,
+    )
+
     if cfg.baseline_layer == "itb_zero_ratio":
         z_itb = compute_layer_direct_ig_all_targets(
             bert_model=adapter.model,
@@ -620,6 +869,99 @@ def _compute_gpt2_layer_z2z(
     )
 
 
+def _compute_gemma3_layer_z2z(
+    *,
+    text_model: Any,
+    z_layer: torch.Tensor,
+    layer_idx: int,
+    cfg: LIGConfig,
+) -> np.ndarray:
+    from utils.calculations.ig.z2z.gemma3_layer_direct_ig import (
+        compute_gemma3_layer_direct_ig_all_targets,
+    )
+
+    if cfg.baseline_layer == "itb_zero_ratio":
+        z_itb = compute_gemma3_layer_direct_ig_all_targets(
+            text_model=text_model,
+            z_layer=z_layer,
+            layer_idx=layer_idx,
+            num_steps=cfg.num_steps,
+            baseline_method="self_input_token",
+        )
+        z_zero = compute_gemma3_layer_direct_ig_all_targets(
+            text_model=text_model,
+            z_layer=z_layer,
+            layer_idx=layer_idx,
+            num_steps=cfg.num_steps,
+            baseline_method="zero",
+        )
+        return apply_layer_z2z_itb_zero_base_ratio(z_itb[np.newaxis, ...], z_zero[np.newaxis, ...])[0]
+    return compute_gemma3_layer_direct_ig_all_targets(
+        text_model=text_model,
+        z_layer=z_layer,
+        layer_idx=layer_idx,
+        num_steps=cfg.num_steps,
+        baseline_method=cfg.baseline_layer,  # type: ignore[arg-type]
+    )
+
+
+def _gemma3_att_head_contributions(
+    *,
+    text_model: Any,
+    input_embeddings: torch.Tensor,
+    layer_idx: int,
+    target_token_idx: int,
+    head_idx: int,
+    baseline_att: str,
+    num_steps: int,
+) -> List[float]:
+    from captum.attr import IntegratedGradients
+
+    from utils.calculations.ig.attention.attention_map_alpha import get_gemma3_self_attention_alpha
+    from utils.calculations.ig.attention.gemma3_attention_models import (
+        create_gemma3_attention_model,
+    )
+
+    def _scores_for_baseline(baseline_method: str) -> np.ndarray:
+        baseline_emb = _gemma3_baseline_embeddings(
+            input_embeddings, baseline_method, target_token_idx
+        )
+        ig_model = create_gemma3_attention_model(
+            text_model=text_model,
+            layer_idx=layer_idx,
+            target_token_idx=target_token_idx,
+            target_head_idx=head_idx,
+            use_last_token=False,
+            debug=False,
+        )
+        ig_model.eval()
+        attr = IntegratedGradients(ig_model).attribute(
+            inputs=input_embeddings,
+            baselines=baseline_emb,
+            n_steps=num_steps,
+            method="riemann_trapezoid",
+        )
+        return attr.sum(dim=-1).squeeze(0).detach().cpu().numpy()
+
+    if baseline_att in ("itb_zero_ratio", "itb_map_ratio"):
+        itb = np.asarray(_scores_for_baseline("self_input_token"), dtype=np.float64)
+        if baseline_att == "itb_zero_ratio":
+            zero = np.asarray(_scores_for_baseline("zero"), dtype=np.float64)
+            out = apply_itb_column_zero_ratio(itb, zero, target_token_idx)
+        else:
+            alpha = get_gemma3_self_attention_alpha(
+                text_model,
+                inputs_embeds=input_embeddings,
+                layer_idx=layer_idx,
+                head_idx=head_idx,
+                token_idx=target_token_idx,
+            )
+            out = apply_itb_column_map_ratio(itb, alpha, target_token_idx)
+        return out.tolist()
+
+    return _scores_for_baseline(baseline_att).tolist()
+
+
 def _mlp_baseline(
     *,
     adapter: Any,
@@ -633,6 +975,10 @@ def _mlp_baseline(
     if cfg.baseline_mlp == "zero":
         return torch.zeros_like(u_j)
     if cfg.baseline_mlp == "att_itb_a0":
+        from utils.calculations.ig.mlp.att_itb_mlp_baseline import (
+            get_mlp_baseline_att_itb_eq_zero,
+        )
+
         return get_mlp_baseline_att_itb_eq_zero(
             bert_model=adapter.model,
             z_layer=z_layer,
@@ -641,6 +987,61 @@ def _mlp_baseline(
             target_token_idx=target_token_idx,
         )
     raise ValueError(f"Unknown MLP baseline: {cfg.baseline_mlp}")
+
+
+def _gemma3_mlp_baseline_u_pre(
+    *,
+    text_model: Any,
+    baseline_mlp: str,
+    input_embeddings: torch.Tensor,
+    layer_idx: int,
+    target_token_idx: int,
+    u_pre_j: torch.Tensor,
+    cache: Dict[str, torch.Tensor],
+) -> torch.Tensor:
+    from utils.calculations.ig.gemma3.block_forward import (
+        attn_pre_oproj_output,
+        layer_attention_mask,
+        rope_position_embeddings,
+        run_blocks_up_to,
+    )
+
+    if baseline_mlp == "zero":
+        return torch.zeros_like(u_pre_j)
+    if baseline_mlp != "att_itb_a0":
+        raise ValueError(f"Unknown Gemma3 MLP baseline: {baseline_mlp}")
+
+    cache_key = f"{layer_idx}:{target_token_idx}"
+    if cache_key in cache:
+        return cache[cache_key]
+
+    with torch.no_grad():
+        baseline_emb = _gemma3_baseline_embeddings(
+            input_embeddings=input_embeddings,
+            baseline_method="self_input_token",
+            target_token_idx=target_token_idx,
+        )
+        z_layer_itb = run_blocks_up_to(
+            text_model=text_model,
+            hidden_states=baseline_emb,
+            layer_idx=layer_idx,
+        )
+        seq_len = z_layer_itb.shape[1]
+        mask = layer_attention_mask(
+            text_model, layer_idx, seq_len, z_layer_itb.device, z_layer_itb.dtype
+        )
+        global_pe, local_pe = rope_position_embeddings(text_model, z_layer_itb)
+        block = text_model.layers[layer_idx]
+        pe = local_pe if block.self_attn.is_sliding else global_pe
+        u_pre_full_itb = attn_pre_oproj_output(
+            block,
+            block.input_layernorm(z_layer_itb),
+            mask,
+            pe,
+        )
+        baseline_u_pre = u_pre_full_itb[0, target_token_idx, :].clone()
+    cache[cache_key] = baseline_u_pre
+    return baseline_u_pre
 
 
 def _tolist(arr: np.ndarray) -> List[List[float]]:
@@ -704,9 +1105,26 @@ def describe_boundaries(
         return info
     if model_type in DECODER_FAMILY_TYPES:
         adapter = load_adapter(model, device=device, allow_decoder_stub=True)
-        info = detect_boundaries(adapter.model).as_dict()
+        from utils.calculations.ig.gemma3.block_forward import get_gemma3_text_model
+
+        try:
+            probe = (
+                get_gemma3_text_model(adapter.model)
+                if model_type == "gemma3"
+                else adapter.model
+            )
+        except AttributeError:
+            probe = adapter.model
+        info = detect_boundaries(probe).as_dict()
         info["model"] = model
-        info["ig_ready"] = model_type in ("gpt2", "llama", "mistral", "qwen2", "gemma")
+        info["ig_ready"] = model_type in (
+            "gpt2",
+            "llama",
+            "mistral",
+            "qwen2",
+            "gemma",
+            "gemma3",
+        )
         return info
 
     raise ValueError(

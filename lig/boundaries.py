@@ -26,6 +26,9 @@ class BlockLayout(str, Enum):
     PRE_LN_DECODER = "pre_ln_decoder"
     """Pre-LN decoder (GPT-2): ``ln_1 → attn → +residual`` gives *u*, then ``ln_2 → mlp → +residual``."""
 
+    PRE_POST_LN_DECODER = "pre_post_ln_decoder"
+    """Pre+post-LN decoder: pre-norm → sublayer → post-norm → +residual (ATT and MLP each)."""
+
     BLOCK_ONLY = "block_only"
     """Whole-block forward only; no stable BERT-style ATT/MLP split for z→u / u→z."""
 
@@ -58,6 +61,7 @@ _POST_LN_ENCODER_TYPES = frozenset(
 )
 
 _PRE_LN_DECODER_TYPES = frozenset({"gpt2", "gpt_neox", "llama", "mistral", "qwen2", "gemma"})
+_GEMMA_DECODER_TYPES = frozenset({"gemma3"})
 
 
 @dataclass(frozen=True)
@@ -119,6 +123,12 @@ def _layer_has(name: str, layer: nn.Module) -> bool:
 
 def _inspect_layer_layout(layer: nn.Module) -> BlockLayout:
     """Infer block wiring from the first layer module."""
+    if (
+        _layer_has("self_attn", layer)
+        and _layer_has("mlp", layer)
+        and _layer_has("pre_feedforward_layernorm", layer)
+    ):
+        return BlockLayout.PRE_POST_LN_DECODER
     if _layer_has("attn", layer) and _layer_has("mlp", layer) and _layer_has("ln_1", layer):
         return BlockLayout.PRE_LN_DECODER
     if _layer_has("self_attn", layer) and _layer_has("mlp", layer) and _layer_has(
@@ -131,7 +141,11 @@ def _inspect_layer_layout(layer: nn.Module) -> BlockLayout:
 
 
 def _architecture_for(model_type: str, layout: BlockLayout) -> str:
-    if layout == BlockLayout.PRE_LN_DECODER or model_type in _PRE_LN_DECODER_TYPES:
+    if (
+        layout in (BlockLayout.PRE_LN_DECODER, BlockLayout.PRE_POST_LN_DECODER)
+        or model_type in _PRE_LN_DECODER_TYPES
+        or model_type in _GEMMA_DECODER_TYPES
+    ):
         return "decoder"
     return "encoder"
 
@@ -149,6 +163,24 @@ def _layout_metadata(layout: BlockLayout) -> Tuple[str, str, str, IgHookPoints, 
                 mlp_input="post-attention residual",
                 mlp_core="mlp (on ln_2(u))",
                 mlp_output="block output",
+            ),
+            FULL_GRANULARITY,
+        )
+    if layout == BlockLayout.PRE_POST_LN_DECODER:
+        return (
+            "Residual stream at block input z^(l) (pre+post-LN decoder)",
+            "Concatenated attention heads before the output projection — per-head LIG boundary u",
+            "Block output after MLP residual z^(l+1)",
+            IgHookPoints(
+                att_input="block input (residual stream)",
+                att_core="self_attn (on input_layernorm(z), RoPE)",
+                att_output="concatenated heads before attention output projection",
+                mlp_input="concatenated heads before attention output projection",
+                mlp_core=(
+                    "attention output projection → post_attention_layernorm → +z "
+                    "→ pre_feedforward_layernorm → mlp"
+                ),
+                mlp_output="block output after post_feedforward_layernorm",
             ),
             FULL_GRANULARITY,
         )
@@ -204,6 +236,9 @@ def detect_boundaries(model: nn.Module) -> BlockBoundaries:
     elif model_type in _PRE_LN_DECODER_TYPES:
         layout = BlockLayout.PRE_LN_DECODER
         detection = f"model_type ({model_type})"
+    elif model_type in _GEMMA_DECODER_TYPES:
+        layout = BlockLayout.PRE_POST_LN_DECODER
+        detection = f"model_type ({model_type})"
     else:
         layout = _inspect_layer_layout(sample_layer)
         detection = "module introspection"
@@ -215,6 +250,12 @@ def detect_boundaries(model: nn.Module) -> BlockBoundaries:
         notes.append("Use granularity='layer' (z→z block IG only).")
     if layout == BlockLayout.PRE_LN_DECODER:
         notes.append("Causal mask; u is post-attention residual at the target token.")
+    if layout == BlockLayout.PRE_POST_LN_DECODER:
+        notes.append(
+            "Causal/sliding masks + dual RoPE may apply; u is the concatenated-head "
+            "pre-output-projection boundary (n_head*head_dim may differ from hidden_size). "
+            "The downstream u→z map includes the output projection and post-attention RMSNorm."
+        )
 
     return BlockBoundaries(
         layout=layout,
@@ -245,7 +286,11 @@ def u_from_z(
     attention_mask: torch.Tensor,
     target_token_idx: int,
 ) -> torch.Tensor:
-    """u_j: ATT output = MLP input at ``target_token_idx``."""
+    """Return the selected ATT/downstream boundary ``u_j``.
+
+    For Gemma3 this is the concatenated-head tensor before the attention output
+    projection; for the other wired layouts it is the post-attention residual.
+    """
     if boundaries.layout == BlockLayout.BLOCK_ONLY:
         raise NotImplementedError(
             f"{boundaries.model_type} has no ATT/MLP boundary; use granularity='layer'."
@@ -281,6 +326,31 @@ def u_from_z(
             u_full = hidden_after_attn_residual(layer, z_layer, attention_mask)
         return u_full[0, target_token_idx, :].clone()
 
+    if boundaries.layout == BlockLayout.PRE_POST_LN_DECODER:
+        from utils.calculations.ig.gemma3.block_forward import (
+            attn_pre_oproj_output,
+            get_gemma3_text_model,
+            layer_attention_mask,
+            rope_position_embeddings,
+        )
+
+        text_model = get_gemma3_text_model(model)
+        seq_len = z_layer.shape[1]
+        with torch.no_grad():
+            global_pe, local_pe = rope_position_embeddings(text_model, z_layer)
+            mask = layer_attention_mask(
+                text_model, layer_idx, seq_len, z_layer.device, z_layer.dtype
+            )
+            block = text_model.layers[layer_idx]
+            pe = local_pe if block.self_attn.is_sliding else global_pe
+            u_full = attn_pre_oproj_output(
+                block,
+                block.input_layernorm(z_layer),
+                mask,
+                pe,
+            )
+        return u_full[0, target_token_idx, :].clone()
+
     raise NotImplementedError(f"Unsupported layout: {boundaries.layout}")
 
 
@@ -311,6 +381,28 @@ def forward_block(
         from utils.calculations.ig.gpt2.block_forward import forward_gpt2_block
 
         return forward_gpt2_block(layer, hidden_states, attention_mask)
+
+    if boundaries.layout == BlockLayout.PRE_POST_LN_DECODER:
+        from utils.calculations.ig.gemma3.block_forward import (
+            forward_gemma3_block,
+            get_gemma3_text_model,
+            layer_attention_mask,
+            rope_position_embeddings,
+        )
+
+        text_model = get_gemma3_text_model(model)
+        seq_len = hidden_states.shape[1]
+        global_pe, local_pe = rope_position_embeddings(text_model, hidden_states)
+        mask = layer_attention_mask(
+            text_model, layer_idx, seq_len, hidden_states.device, hidden_states.dtype
+        )
+        return forward_gemma3_block(
+            text_model.layers[layer_idx],
+            hidden_states,
+            mask,
+            global_pe,
+            local_pe,
+        )
 
     return forward_encoder_layer(
         model,
@@ -346,6 +438,13 @@ def resolve_hook_modules(
         out["att_output"] = layer
         out["mlp_core"] = getattr(layer, "mlp", None)
         out["mlp_output"] = layer
+    elif boundaries.layout == BlockLayout.PRE_POST_LN_DECODER:
+        out["att_core"] = getattr(layer, "self_attn", None)
+        # The pre-output-projection head tensor is internal to self_attn and has
+        # no standalone HF module that can be hooked directly.
+        out["att_output"] = None
+        out["mlp_core"] = layer
+        out["mlp_output"] = layer
     return out
 
 
@@ -374,6 +473,17 @@ def describe_boundaries_from_config(model_name: str) -> Dict[str, Any]:
     elif model_type in _PRE_LN_DECODER_TYPES:
         layout = BlockLayout.PRE_LN_DECODER
         detection = f"config model_type ({model_type})"
+    elif model_type in _GEMMA_DECODER_TYPES:
+        layout = BlockLayout.PRE_POST_LN_DECODER
+        detection = f"config model_type ({model_type})"
+        # Multimodal gemma3 config nests text layers under text_config.
+        text_cfg = getattr(config, "text_config", None)
+        if text_cfg is not None:
+            num_layers = int(
+                getattr(text_cfg, "num_hidden_layers", None)
+                or getattr(text_cfg, "n_layer", None)
+                or num_layers
+            )
     else:
         layout = BlockLayout.BLOCK_ONLY
         detection = "config fallback (unknown layout — load model for introspection)"
@@ -385,6 +495,11 @@ def describe_boundaries_from_config(model_name: str) -> Dict[str, Any]:
         notes.append("Load the model and call detect_boundaries(model) to refine layout.")
     elif layout == BlockLayout.BLOCK_ONLY:
         notes.append("Block-level z→z only.")
+    if layout == BlockLayout.PRE_POST_LN_DECODER:
+        notes.append(
+            "Pre+post-LN decoder; u is the concatenated-head boundary before the "
+            "attention output projection; multimodal checkpoints use language_model layers."
+        )
 
     return BlockBoundaries(
         layout=layout,
