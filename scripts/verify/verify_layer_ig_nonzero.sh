@@ -41,7 +41,8 @@ print(s, m)
 failed=0
 checked=0
 for subdir in steps32_bert-base-uncased_maxlen128_z_to_z_layer_ig_baseline_zero \
-              steps32_bert-base-uncased_maxlen128_z_to_z_layer_ig_baseline_self_input_token; do
+              steps32_bert-base-uncased_maxlen128_z_to_z_layer_ig_baseline_self_input_token \
+              steps32_bert-base-uncased_maxlen128_z_to_z_layer_ig_baseline_self_output_token; do
   [ -d "$BASE/$subdir" ] || continue
   checked=$((checked+1))
   name="${subdir##*baseline_}"; name="Layer IG ${name}"
