@@ -397,7 +397,7 @@ def compute_global_ig_analysis(
         auto_batch_size: GPUメモリに応じて自動調整するか
         use_mixed_precision: 混合精度計算を使用するか（Noneの場合は自動判定）
         auto_configure: 利用可能なGPUに応じて設定を自動調整するか
-        baseline_method: ベースライン選択方法（"zero", "self_input_token"）
+        baseline_method: ベースライン選択方法（"zero", "self_input_token", "self_output_token"）
         input_type: 入力タイプ（"z": 入力埋め込み, "v": Valueベクトル）
         use_direct_computation: 直接計算を使用するか（input_type="v"の場合のみ有効）
         model_lightning: [非推奨] 後方互換性のため残存

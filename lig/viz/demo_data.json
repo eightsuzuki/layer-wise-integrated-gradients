@@ -1,0 +1,62 @@
+{
+  "tokens": [
+    "[CLS]",
+    "The",
+    "cat",
+    "sat",
+    "[SEP]"
+  ],
+  "steps": [
+    {
+      "layer": 0,
+      "token": 1,
+      "target_token": 2,
+      "head": 3,
+      "mlp_head": 3,
+      "type": "attn",
+      "influence": 0.42
+    },
+    {
+      "layer": 0,
+      "token": 2,
+      "target_token": 2,
+      "head": 5,
+      "mlp_head": 5,
+      "type": "attn",
+      "influence": 0.31
+    },
+    {
+      "layer": 0,
+      "token": 2,
+      "head": 5,
+      "mlp_head": 5,
+      "type": "mlp",
+      "influence": 0.28
+    },
+    {
+      "layer": 1,
+      "token": 2,
+      "target_token": 3,
+      "head": 1,
+      "mlp_head": 1,
+      "type": "attn",
+      "influence": 0.55
+    },
+    {
+      "layer": 1,
+      "token": 3,
+      "head": 1,
+      "mlp_head": 1,
+      "type": "mlp",
+      "influence": 0.47
+    },
+    {
+      "layer": 11,
+      "token": 3,
+      "head": 8,
+      "mlp_head": 8,
+      "type": "mlp_final",
+      "influence": 0.62
+    }
+  ]
+}

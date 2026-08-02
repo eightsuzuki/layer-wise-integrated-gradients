@@ -16,7 +16,7 @@ class DevicePool:
     Manage model replicas, CUDA streams, and input placement across devices.
 
     The handling mirrors the execution order summarised in
-    `theory/1.transformerの記号体系の定義と計算の流れ.md`: inputs are
+    `docs/theory/paper/1.transformerの記号体系の定義と計算の流れ.md`: inputs are
     distributed to the relevant device before the IG integrals are evaluated.
     """
 
@@ -33,6 +33,16 @@ class DevicePool:
         )
         self.is_v100 = (
             torch.cuda.is_available() and "V100" in torch.cuda.get_device_name(0)
+        )
+        self.is_blackwell = (
+            torch.cuda.is_available()
+            and (
+                "BLACKWELL" in torch.cuda.get_device_name(0).upper()
+                or "GB200" in torch.cuda.get_device_name(0).upper()
+            )
+        )
+        self.is_b100 = (
+            torch.cuda.is_available() and "B100" in torch.cuda.get_device_name(0).upper()
         )
 
         # 全GPUを使用

@@ -49,7 +49,7 @@ result = explain(
 ```
 
 `lig.adapters.load_adapter()` already detects decoder `model_type` and returns `DecoderAdapter`;  
-`explain()` will call decoder-specific IG once `utils/calculations/ig` paths are generalized.
+`explain()` routes GPT-2 and Llama-family models through `load_decoder_ig_adapter()`.
 
 ---
 
@@ -63,10 +63,11 @@ result = explain(
 - [x] z→z (layer): `z2z/gpt2_layer_direct_ig.py`
 - [x] Test: `explain(..., model="gpt2", granularity="all", layers=[0])`
 
-### Phase 2 — Llama family
+### Phase 2 — Llama family ✅
 
-- [ ] RMSNorm + SwiGLU MLP path in MLP wrapper
-- [ ] GQA / MQA head layout in ATT wrapper
+- [x] RMSNorm + SwiGLU MLP path (`lig/adapters/decoder_ig/llama.py`)
+- [x] GQA: per-head z→u via head-dim slices
+- [x] `load_decoder_ig_adapter()` + `lig.explain(model="meta-llama/...")`
 
 ### Phase 3 — Composition & PTB-optional demos
 
@@ -80,9 +81,14 @@ result = explain(
 ```
 lig/adapters/
   encoder.py    # BERT-family — production
-  decoder.py    # load GPT-2 / stub for Llama family
-  factory.py    # load_adapter()
-lig/api.py      # _run_explain_gpt2() for z→u, u→z, z→z
+  decoder.py    # load GPT-2 / Llama family
+  decoder_ig/
+    factory.py  # load_decoder_ig_adapter()
+    gpt2.py     # GPT2Adapter
+    llama.py    # LlamaIGAdapter (Llama 2/3, Mistral, Qwen2, Gemma)
+lig/api.py      # _run_explain_decoder() for z→u, u→z, z→z
+utils/calculations/ig/llama/  # block forward
+utils/calculations/ig/z2z/llama_layer_direct_ig.py
 ```
 
 `test/test_lig_api.py` — RoBERTa regression; GPT-2 `granularity="all"` smoke test.

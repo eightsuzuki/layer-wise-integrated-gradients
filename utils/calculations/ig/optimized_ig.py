@@ -3,7 +3,7 @@
 Optimised Integrated Gradients runtime coordinated with modular components.
 
 This refactor follows the theoretical breakdown documented in
-`theory/1.transformerの記号体系の定義と計算の流れ.md` by separating
+`docs/theory/paper/1.transformerの記号体系の定義と計算の流れ.md` by separating
 device placement, task scheduling and execution into dedicated modules.
 """
 

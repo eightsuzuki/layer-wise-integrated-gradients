@@ -29,6 +29,8 @@ def get_encoder_stack(model: nn.Module) -> nn.Module:
         return model.transformer
 
     # Decoder-only causal LMs (GPT-2, Llama, …)
+    if hasattr(model, "layers") and isinstance(getattr(model, "layers", None), nn.ModuleList):
+        return model
     if hasattr(model, "transformer") and hasattr(model.transformer, "h"):
         return model.transformer
     if hasattr(model, "model") and hasattr(getattr(model, "model"), "layers"):

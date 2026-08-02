@@ -124,11 +124,11 @@ class DecoderAdapter:
         return hidden
 
     def ensure_ig_ready(self) -> None:
-        if self.model_type in ("gpt2", "llama", "mistral", "qwen2", "gemma"):
+        if self.model_type == "gpt2":
             return
         raise NotImplementedError(
             f"Decoder LIG is not implemented yet for {self.model_type} ({self.model_name}). "
-            "GPT-2 and Llama-family models are supported via lig.explain(). "
+            "GPT-2 is supported via lig.adapters.decoder_ig.GPT2Adapter and lig.explain(model='gpt2'). "
             "Encoder models (BERT, RoBERTa, …) are supported via lig.explain(). "
             "See docs/DECODER_DESIGN.md for the planned API."
         )

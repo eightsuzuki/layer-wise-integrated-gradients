@@ -57,7 +57,7 @@ _POST_LN_ENCODER_TYPES = frozenset(
     }
 )
 
-_PRE_LN_DECODER_TYPES = frozenset({"gpt2", "gpt_neox"})
+_PRE_LN_DECODER_TYPES = frozenset({"gpt2", "gpt_neox", "llama", "mistral", "qwen2", "gemma"})
 
 
 @dataclass(frozen=True)
@@ -120,6 +120,10 @@ def _layer_has(name: str, layer: nn.Module) -> bool:
 def _inspect_layer_layout(layer: nn.Module) -> BlockLayout:
     """Infer block wiring from the first layer module."""
     if _layer_has("attn", layer) and _layer_has("mlp", layer) and _layer_has("ln_1", layer):
+        return BlockLayout.PRE_LN_DECODER
+    if _layer_has("self_attn", layer) and _layer_has("mlp", layer) and _layer_has(
+        "input_layernorm", layer
+    ):
         return BlockLayout.PRE_LN_DECODER
     if _layer_has("attention", layer) and _layer_has("intermediate", layer):
         return BlockLayout.POST_LN_ENCODER
@@ -257,6 +261,20 @@ def u_from_z(
         return attn_out[0, target_token_idx, :].clone()
 
     if boundaries.layout == BlockLayout.PRE_LN_DECODER:
+        if _layer_has("self_attn", layer):
+            from utils.calculations.ig.llama.block_forward import (
+                hidden_after_attn_residual as llama_hidden_after_attn,
+                make_position_embeddings,
+            )
+
+            position_ids = torch.arange(
+                z_layer.shape[1], device=z_layer.device, dtype=torch.long
+            ).unsqueeze(0)
+            pos_emb = make_position_embeddings(model, z_layer, position_ids)
+            with torch.no_grad():
+                u_full = llama_hidden_after_attn(layer, z_layer, pos_emb)
+            return u_full[0, target_token_idx, :].clone()
+
         from utils.calculations.ig.gpt2.block_forward import hidden_after_attn_residual
 
         with torch.no_grad():
@@ -278,6 +296,18 @@ def forward_block(
     layer = get_encoder_layers(model)[layer_idx]
 
     if boundaries.layout == BlockLayout.PRE_LN_DECODER:
+        if _layer_has("self_attn", layer):
+            from utils.calculations.ig.llama.block_forward import (
+                forward_llama_block,
+                make_position_embeddings,
+            )
+
+            position_ids = torch.arange(
+                hidden_states.shape[1], device=hidden_states.device, dtype=torch.long
+            ).unsqueeze(0)
+            pos_emb = make_position_embeddings(model, hidden_states, position_ids)
+            return forward_llama_block(layer, hidden_states, pos_emb)
+
         from utils.calculations.ig.gpt2.block_forward import forward_gpt2_block
 
         return forward_gpt2_block(layer, hidden_states, attention_mask)

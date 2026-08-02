@@ -197,13 +197,13 @@ def test_other_decoder_not_implemented_yet():
     from lig import explain
 
     mock_cfg = MagicMock()
-    mock_cfg.model_type = "llama"
+    mock_cfg.model_type = "gpt_neox"  # DECODER_FAMILY_TYPES but not DECODER_IG_MODEL_TYPES yet
 
     with patch("transformers.AutoConfig.from_pretrained", return_value=mock_cfg):
         with pytest.raises(NotImplementedError, match="not implemented yet"):
             explain(
                 "Hi",
-                model="meta-llama/Llama-2-7b-hf",
+                model="EleutherAI/pythia-70m",
                 num_steps=2,
                 granularity="layer",
                 device="cpu",
@@ -215,8 +215,7 @@ def test_decoder_load_stub():
 
     adapter = load_adapter("gpt2", device="cpu", allow_decoder_stub=True)
     assert adapter.model_type == "gpt2"
-    with pytest.raises(NotImplementedError, match="Decoder LIG is not implemented"):
-        adapter.ensure_ig_ready()
+    adapter.ensure_ig_ready()  # GPT-2 IG is wired via lig.adapters.decoder_ig
 
 
 def test_unknown_model_type():

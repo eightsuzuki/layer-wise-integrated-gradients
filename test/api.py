@@ -85,14 +85,12 @@ def _run_explain(text: str, cfg: LIGConfig) -> Dict[str, Any]:
     model_type = getattr(AutoConfig.from_pretrained(cfg.model), "model_type", "unknown")
     modes = cfg.resolved_granularity()
 
-    from lig.adapters.decoder_ig import DECODER_IG_MODEL_TYPES
-
-    if model_type in DECODER_IG_MODEL_TYPES:
-        return _run_explain_decoder(text, cfg, model_type)
+    if model_type == "gpt2":
+        return _run_explain_gpt2(text, cfg)
     if model_type in DECODER_FAMILY_TYPES:
         raise NotImplementedError(
             f"Decoder model '{cfg.model}' ({model_type}) is not implemented yet. "
-            f"Supported decoder IG: {sorted(DECODER_IG_MODEL_TYPES)}. "
+            f"GPT-2 supports granularity att/mlp/layer via lig.explain(). "
             f"Requested: {modes}. See docs/DECODER_DESIGN.md."
         )
 
@@ -221,20 +219,20 @@ def _run_explain(text: str, cfg: LIGConfig) -> Dict[str, Any]:
     return result
 
 
-def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str, Any]:
-    """Decoder (GPT-2 / Llama family): z→u, u→z, z→z via :class:`DecoderIGAdapter`."""
-    from lig.adapters.decoder_ig import load_decoder_ig_adapter
+def _run_explain_gpt2(text: str, cfg: LIGConfig) -> Dict[str, Any]:
+    """GPT-2 decoder: z→u (ATT), u→z (MLP), z→z (layer) via :class:`GPT2Adapter`."""
+    from lig.adapters.decoder_ig import GPT2Adapter
     from lig.boundaries import detect_boundaries
 
     modes = cfg.resolved_granularity()
     if cfg.baseline_mlp not in ("zero", "att_itb_a0"):
         raise NotImplementedError(
-            "Decoder u→z supports baseline_mlp in {'zero', 'att_itb_a0'} only. "
+            "GPT-2 u→z supports baseline_mlp in {'zero', 'att_itb_a0'} only. "
             f"Got: {cfg.baseline_mlp!r}"
         )
 
     device = torch.device(cfg.device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    adapter = load_decoder_ig_adapter(cfg.model, device=str(device))
+    adapter = GPT2Adapter(model_name=cfg.model, device=device)
     inputs = adapter.encode(text, max_length=512)
     adapter.cache(inputs)
     tokens = adapter.tokens_from_inputs(inputs)
@@ -254,7 +252,7 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
         "text": text,
         "tokens": tokens,
         "model": cfg.model,
-        "model_type": model_type,
+        "model_type": "gpt2",
         "architecture": "decoder",
         "config": {
             "num_steps": cfg.num_steps,
@@ -281,15 +279,15 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
         layer_out: Dict[str, Any] = {"layer_idx": layer_idx}
 
         if "layer" in modes:
-            matrix = _compute_decoder_layer_z2z(
-                adapter=adapter,
+            matrix = _compute_gpt2_layer_z2z(
+                gpt2=adapter.model,
                 z_layer=z_layer,
                 layer_idx=layer_idx,
                 cfg=cfg,
             )
             layer_out["z2z"] = {
                 "baseline": cfg.baseline_layer,
-                "description": "Layer-whole IG (z -> z), decoder block, L2-scalarized",
+                "description": "Layer-whole IG (z -> z), GPT-2 block, L2-scalarized",
                 "shape": [int(matrix.shape[0]), int(matrix.shape[1])],
                 "matrix": _tolist(matrix),
                 "token_to_token": _matrix_with_labels(matrix, tokens, token_indices),
@@ -305,7 +303,7 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
             if "att" in modes:
                 target_entry["z2u"] = {
                     "baseline": cfg.baseline_att,
-                    "description": "ATT IG (z -> u), causal decoder; per-head token scores",
+                    "description": "ATT IG (z -> u), GPT-2 causal; per-head token scores",
                     "heads": {},
                 }
                 for h_idx in head_indices:
@@ -336,7 +334,7 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
                 completeness_error = ig_sum - theoretical_diff
                 target_entry["u2z"] = {
                     "baseline": cfg.baseline_mlp,
-                    "description": "MLP IG (u -> z), post-attn u to z^(l+1), L2-scalarized",
+                    "description": "MLP IG (u -> z), GPT-2 post-attn u to z^(l+1), L2-scalarized",
                     "contributions": contributions,
                     "l2_total": l2_total,
                     "completeness": {
@@ -352,11 +350,6 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
         result["layers"][str(layer_idx)] = layer_out
 
     return result
-
-
-def _run_explain_gpt2(text: str, cfg: LIGConfig) -> Dict[str, Any]:
-    """Backward-compatible alias for GPT-2 decoder explain."""
-    return _run_explain_decoder(text, cfg, "gpt2")
 
 
 def _run_explain_gpt2_att(text: str, cfg: LIGConfig) -> Dict[str, Any]:
@@ -530,60 +523,6 @@ def _compute_encoder_layer_z2z(
     )
 
 
-def _compute_decoder_layer_z2z(
-    *,
-    adapter: Any,
-    z_layer: torch.Tensor,
-    layer_idx: int,
-    cfg: LIGConfig,
-) -> np.ndarray:
-    from lig.adapters.decoder_ig.factory import LLAMA_DECODER_TYPES
-
-    model_type = getattr(adapter.model.config, "model_type", "unknown")
-    if model_type == "gpt2":
-        return _compute_gpt2_layer_z2z(
-            gpt2=adapter.model,
-            z_layer=z_layer,
-            layer_idx=layer_idx,
-            cfg=cfg,
-        )
-    if model_type in LLAMA_DECODER_TYPES:
-        from utils.calculations.ig.z2z.llama_layer_direct_ig import (
-            compute_llama_layer_direct_ig_all_targets,
-        )
-
-        position_ids = adapter.cache_data["position_ids"]
-        if cfg.baseline_layer == "itb_zero_ratio":
-            z_itb = compute_llama_layer_direct_ig_all_targets(
-                llama=adapter.model,
-                z_layer=z_layer,
-                layer_idx=layer_idx,
-                position_ids=position_ids,
-                num_steps=cfg.num_steps,
-                baseline_method="self_input_token",
-            )
-            z_zero = compute_llama_layer_direct_ig_all_targets(
-                llama=adapter.model,
-                z_layer=z_layer,
-                layer_idx=layer_idx,
-                position_ids=position_ids,
-                num_steps=cfg.num_steps,
-                baseline_method="zero",
-            )
-            return apply_layer_z2z_itb_zero_base_ratio(
-                z_itb[np.newaxis, ...], z_zero[np.newaxis, ...]
-            )[0]
-        return compute_llama_layer_direct_ig_all_targets(
-            llama=adapter.model,
-            z_layer=z_layer,
-            layer_idx=layer_idx,
-            position_ids=position_ids,
-            num_steps=cfg.num_steps,
-            baseline_method=cfg.baseline_layer,  # type: ignore[arg-type]
-        )
-    raise NotImplementedError(f"Layer z2z not implemented for decoder {model_type}")
-
-
 def _compute_gpt2_layer_z2z(
     *,
     gpt2: Any,
@@ -706,7 +645,7 @@ def describe_boundaries(
         adapter = load_adapter(model, device=device, allow_decoder_stub=True)
         info = detect_boundaries(adapter.model).as_dict()
         info["model"] = model
-        info["ig_ready"] = model_type in ("gpt2", "llama", "mistral", "qwen2", "gemma")
+        info["ig_ready"] = model_type == "gpt2"
         return info
 
     raise ValueError(
