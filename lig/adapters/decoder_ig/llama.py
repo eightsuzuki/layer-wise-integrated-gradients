@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from captum.attr import IntegratedGradients
 from transformers import AutoModel, AutoTokenizer
+from transformers.models.llama.modeling_llama import apply_rotary_pos_emb, eager_attention_forward
 
 from lig.adapters.decoder_ig.base import DecoderIGAdapter
 from lig.adapters.decoder_ig.mlp_ig import make_probe_direction_forward, run_mlp_input_ig
@@ -31,6 +32,7 @@ from lig.adapters.decoder_ig.gpt2 import (
 )
 from utils.calculations.ig.llama.block_forward import (
     hidden_after_attn_residual,
+    make_causal_mask,
     make_position_embeddings,
 )
 
@@ -129,7 +131,7 @@ class LlamaIGAdapter(DecoderIGAdapter):
                 attn_out, attn_weights = layer.self_attn(
                     normed,
                     position_embeddings=pos_emb,
-                    attention_mask=None,
+                    attention_mask=self._causal_mask(normed),
                 )
                 hidden_after_attn = residual + attn_out
                 mlp_input_cache[layer_idx] = hidden_after_attn.detach()
@@ -162,6 +164,15 @@ class LlamaIGAdapter(DecoderIGAdapter):
             self._rope_module(), hidden_states, self.cache_data["position_ids"]
         )
 
+    def _causal_mask(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        """Additive causal mask for hand-rolled block forwards.
+
+        ``LlamaAttention`` takes the mask from its caller; ``LlamaModel`` builds it,
+        we do not, so every ``self_attn`` call below has to pass it explicitly or
+        the block runs as bidirectional attention.
+        """
+        return make_causal_mask(hidden_states)
+
     def get_z(self, layer_idx: int) -> torch.Tensor:
         self.ensure_cached()
         return self.cache_data["z"][layer_idx]
@@ -178,20 +189,35 @@ class LlamaIGAdapter(DecoderIGAdapter):
         head_idx: Optional[int] = None,
     ) -> torch.Tensor:
         layer = self.decoder.layers[layer_idx]
-        residual = z
         normed = layer.input_layernorm(z)
         pos_emb = self._position_embeddings(z)
-        attn_out, _ = layer.self_attn(
-            normed,
-            position_embeddings=pos_emb,
-            attention_mask=None,
-        )
-        full = residual + attn_out
         if head_idx is None:
-            return full[:, target_token_idx, :]
-        start = head_idx * self.head_dim
-        end = start + self.head_dim
-        return full[:, target_token_idx, start:end]
+            attn_out, _ = layer.self_attn(
+                normed,
+                position_embeddings=pos_emb,
+                attention_mask=self._causal_mask(normed),
+            )
+            return attn_out[:, target_token_idx, :]
+
+        # Keep the head boundary before o_proj.  Slicing o_proj's output would
+        # only split mixed residual coordinates, not recover per-head outputs.
+        attn = layer.self_attn
+        input_shape = normed.shape[:-1]
+        hidden_shape = (*input_shape, -1, attn.head_dim)
+        query = attn.q_proj(normed).view(hidden_shape).transpose(1, 2)
+        key = attn.k_proj(normed).view(hidden_shape).transpose(1, 2)
+        value = attn.v_proj(normed).view(hidden_shape).transpose(1, 2)
+        query, key = apply_rotary_pos_emb(query, key, *pos_emb)
+        head_outputs, _ = eager_attention_forward(
+            attn,
+            query,
+            key,
+            value,
+            attention_mask=self._causal_mask(normed),
+            dropout=0.0,
+            scaling=attn.scaling,
+        )
+        return head_outputs[:, target_token_idx, head_idx, :]
 
     def get_attention_weights(
         self,
@@ -218,7 +244,7 @@ class LlamaIGAdapter(DecoderIGAdapter):
         _, weights = layer.self_attn(
             normed,
             position_embeddings=pos_emb,
-            attention_mask=None,
+            attention_mask=self._causal_mask(normed),
         )
         if weights is None:
             raise RuntimeError(f"Layer {layer_idx} returned no attention weights")
@@ -292,6 +318,7 @@ class LlamaIGAdapter(DecoderIGAdapter):
         baseline: str = ATT_ZERO,
         num_steps: int = 32,
         zero_values: Optional[np.ndarray] = None,
+        probe_w: Optional[np.ndarray] = None,
     ) -> AttentionIGResult:
         baseline = normalize_attention_baseline(baseline)
         z = self.get_z(layer_idx).detach()
@@ -300,20 +327,31 @@ class LlamaIGAdapter(DecoderIGAdapter):
             layer_idx, baseline_z, target_token_idx, head_idx
         ).detach()
 
-        def forward_fn(z_interp: torch.Tensor) -> torch.Tensor:
-            out = self.attention_output(layer_idx, z_interp, target_token_idx, head_idx)
-            return torch.norm(out - baseline_out, dim=-1)
+        if probe_w is None:
+            # Paper default: L2 scalarization A_j(a) = ||u_j(a) - u_j(0)||_2.
+            def forward_fn(z_interp: torch.Tensor) -> torch.Tensor:
+                out = self.attention_output(layer_idx, z_interp, target_token_idx, head_idx)
+                return torch.norm(out - baseline_out, dim=-1)
+
+            target_mode = "l2_delta"
+        else:
+            # Signed linear read-out, matching compute_mlp_ig(probe_w=...).  Needed
+            # to share one estimand with logit-difference methods (EAP / EAP-IG).
+            def forward_fn(z_interp: torch.Tensor) -> torch.Tensor:
+                out = self.attention_output(layer_idx, z_interp, target_token_idx, head_idx)
+                w = torch.as_tensor(probe_w, dtype=out.dtype, device=out.device)
+                return (out - baseline_out) @ w
+
+            target_mode = "probe_direction"
 
         ig = IntegratedGradients(forward_fn)
-        attributions = ig.attribute(
+        attributions, convergence_delta = ig.attribute(
             inputs=z.float(),
             baselines=baseline_z.float(),
             n_steps=num_steps,
-            return_convergence_delta=False,
+            return_convergence_delta=True,
         )
         values = attributions.sum(dim=-1).squeeze(0).detach().cpu().numpy()
-        if target_token_idx + 1 < values.shape[0]:
-            values[target_token_idx + 1 :] = 0.0
 
         with torch.no_grad():
             actual = float(forward_fn(z.float()).detach().cpu().item())
@@ -326,10 +364,12 @@ class LlamaIGAdapter(DecoderIGAdapter):
             else abs(ig_sum - theoretical_diff)
         )
         verification = {
+            "target_mode": target_mode,
             "theoretical_diff": theoretical_diff,
             "ig_sum": ig_sum,
             "relative_error": float(relative_error),
-            "is_valid": bool(relative_error < 0.2),
+            "captum_convergence_delta": float(convergence_delta.abs().max().detach().cpu()),
+            "is_valid": bool(relative_error < 0.02),
         }
 
         raw_values: Optional[np.ndarray] = None
@@ -344,6 +384,7 @@ class LlamaIGAdapter(DecoderIGAdapter):
                     head_idx=head_idx,
                     baseline=ATT_ZERO,
                     num_steps=num_steps,
+                    probe_w=probe_w,
                 ).values
             if baseline == ATT_ITB_MAP_RATIO:
                 weights = self.get_attention_weights(

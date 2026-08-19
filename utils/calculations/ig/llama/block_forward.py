@@ -20,13 +20,37 @@ def make_position_embeddings(
     return rotary(hidden_states, position_ids)
 
 
+def make_causal_mask(hidden_states: torch.Tensor) -> torch.Tensor:
+    """Additive causal mask ``(B, 1, T, T)`` for a decoder block.
+
+    ``eager_attention_forward`` only applies a mask when one is passed, so a
+    hand-rolled block forward has to build it; ``diagonal=1`` keeps self-attention.
+    ``finfo.min`` (not ``-inf``) keeps the backward pass free of ``0 * inf = NaN``.
+    """
+    batch_size, seq_len = hidden_states.shape[0], hidden_states.shape[1]
+    mask = torch.full(
+        (seq_len, seq_len),
+        torch.finfo(hidden_states.dtype).min,
+        device=hidden_states.device,
+        dtype=hidden_states.dtype,
+    )
+    mask = torch.triu(mask, diagonal=1)
+    return mask[None, None].expand(batch_size, 1, seq_len, seq_len)
+
+
 def forward_llama_block(
     layer: nn.Module,
     hidden_states: torch.Tensor,
     position_embeddings: Tuple[torch.Tensor, torch.Tensor],
     attention_mask: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """One Llama Pre-LN block: z^(l) -> z^(l+1)."""
+    """One Llama Pre-LN block: z^(l) -> z^(l+1).
+
+    ``attention_mask=None`` means "causal", not "unmasked": these decoders are
+    causal, and leaving the mask out silently yields bidirectional attention.
+    """
+    if attention_mask is None:
+        attention_mask = make_causal_mask(hidden_states)
     residual = hidden_states
     normed = layer.input_layernorm(hidden_states)
     attn_out, _ = layer.self_attn(
@@ -46,7 +70,12 @@ def hidden_after_attn_residual(
     position_embeddings: Tuple[torch.Tensor, torch.Tensor],
     attention_mask: torch.Tensor | None = None,
 ) -> torch.Tensor:
-    """Post-attention residual stream (MLP input boundary u)."""
+    """Post-attention residual stream (MLP input boundary u).
+
+    ``attention_mask=None`` defaults to the causal mask, as in ``forward_llama_block``.
+    """
+    if attention_mask is None:
+        attention_mask = make_causal_mask(hidden_states)
     residual = hidden_states
     normed = layer.input_layernorm(hidden_states)
     attn_out, _ = layer.self_attn(
