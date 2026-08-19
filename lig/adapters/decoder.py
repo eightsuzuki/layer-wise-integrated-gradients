@@ -35,6 +35,7 @@ IG_READY_DECODER_TYPES = frozenset(
     {"gpt2", "llama", "mistral", "qwen2", "gemma"} | GEMMA3_MODEL_TYPES
 )
 
+
 @dataclass
 class DecoderAdapter:
     """
