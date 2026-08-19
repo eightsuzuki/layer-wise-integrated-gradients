@@ -146,7 +146,9 @@ def attn_pre_oproj_output(
     cos, sin = position_embeddings
     query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
-    softcap = getattr(attn, "attn_logit_softcapping", None)
+    # No softcap: Gemma3Attention.forward does not pass attn_logit_softcapping
+    # to its attention interface, so applying it here would diverge from the
+    # model's own forward.
     attn_output, _ = eager_attention_forward(
         attn,
         query_states,
@@ -155,7 +157,6 @@ def attn_pre_oproj_output(
         attention_mask,
         dropout=0.0,
         scaling=attn.scaling,
-        softcap=softcap,
     )
     # attn_output: [batch, seq, n_head, head_dim]
     if target_head_idx is not None:

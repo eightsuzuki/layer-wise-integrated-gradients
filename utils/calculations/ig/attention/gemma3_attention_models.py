@@ -30,6 +30,14 @@ class Gemma3AttentionModel(nn.Module):
     Interpolates token embeddings (inputs_embeds / scaled wte), runs blocks
     ``0 .. layer_idx-1``, then evaluates the target-layer attention core
     (pre-``o_proj``) at ``target_token_idx`` / ``target_head_idx``.
+
+    The IG input is the embedding, not z^(l) as in the GPT-2 / Llama adapters
+    (``lig/adapters/decoder_ig/``): Gemma3's u sits before ``o_proj`` and has no
+    residual term, so RMSNorm makes it scale invariant in z
+    (``u(a * z) == u(z)``). Interpolating z would give a constant path and ~zero
+    attributions for the ``zero`` and ``itb_zero_ratio`` baselines. Scores are
+    therefore embedding-space attributions and are not directly comparable with
+    the GPT-2 / Llama z→u numbers.
     """
 
     def __init__(

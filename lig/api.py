@@ -5,6 +5,7 @@ Unified LIG API — one call, JSON output.
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -373,6 +374,25 @@ def _run_explain_gpt2_att(text: str, cfg: LIGConfig) -> Dict[str, Any]:
     return _run_explain_gpt2(text, narrow)
 
 
+@contextmanager
+def _torchvision_disabled():
+    """Hide torchvision while Transformers imports the multimodal Gemma3 class.
+
+    LIG uses only the language model, so this optional vision dependency must
+    not block text analysis when it is absent or binary-incompatible with the
+    installed PyTorch. The flag is restored on exit, so image pipelines running
+    later in the same process are unaffected.
+    """
+    import transformers.utils.import_utils as import_utils
+
+    original = import_utils._torchvision_available
+    import_utils._torchvision_available = False
+    try:
+        yield
+    finally:
+        import_utils._torchvision_available = original
+
+
 def _gemma3_baseline_embeddings(
     input_embeddings: torch.Tensor,
     baseline_method: str,
@@ -394,26 +414,6 @@ def _run_explain_gemma3(text: str, cfg: LIGConfig) -> Dict[str, Any]:
     """Gemma3 decoder: z→u (ATT), u→z (MLP), z→z (layer) with pre+post-LN blocks."""
     import warnings
 
-    # Gemma3 is multimodal, so Transformers probes torchvision while importing
-    # its model class. LIG uses only the language model; disabling this optional
-    # vision dependency also lets text analysis run when torchvision is absent
-    # or binary-incompatible with the installed PyTorch.
-    import transformers.utils.import_utils as transformers_import_utils
-
-    transformers_import_utils._torchvision_available = False
-
-    from transformers import AutoModel, AutoTokenizer
-
-    from lig.boundaries import detect_boundaries
-    from utils.calculations.ig.gemma3.block_forward import (
-        attn_pre_oproj_output,
-        embed_tokens,
-        get_gemma3_text_model,
-        layer_attention_mask,
-        rope_position_embeddings,
-    )
-    from utils.calculations.ig.mlp.gemma3_mlp_lig_ig import compute_gemma3_mlp_lig_single_token
-
     modes = cfg.resolved_granularity()
     if cfg.baseline_mlp not in ("zero", "att_itb_a0"):
         raise NotImplementedError(
@@ -422,11 +422,28 @@ def _run_explain_gemma3(text: str, cfg: LIGConfig) -> Dict[str, Any]:
         )
 
     device = torch.device(cfg.device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    loaded = AutoModel.from_pretrained(
-        cfg.model,
-        attn_implementation="eager",
-        torch_dtype=torch.float32,
-    ).to(device)
+    # Gemma3 is multimodal, so Transformers probes torchvision while importing
+    # its model class; LIG only needs the language model.
+    with _torchvision_disabled():
+        from transformers import AutoModel, AutoTokenizer
+
+        from lig.boundaries import detect_boundaries
+        from utils.calculations.ig.gemma3.block_forward import (
+            attn_pre_oproj_output,
+            embed_tokens,
+            get_gemma3_text_model,
+            layer_attention_mask,
+            rope_position_embeddings,
+        )
+        from utils.calculations.ig.mlp.gemma3_mlp_lig_ig import (
+            compute_gemma3_mlp_lig_single_token,
+        )
+
+        loaded = AutoModel.from_pretrained(
+            cfg.model,
+            attn_implementation="eager",
+            torch_dtype=torch.float32,
+        ).to(device)
     loaded.eval()
     text_model = get_gemma3_text_model(loaded)
     text_model.eval()
@@ -540,7 +557,9 @@ def _run_explain_gemma3(text: str, cfg: LIGConfig) -> Dict[str, Any]:
                     "baseline": cfg.baseline_att,
                     "description": (
                         "ATT IG (z -> u), Gemma3 causal/sliding; per-head scores from "
-                        "pre-o_proj attention output (head_dim space; not residual dim)"
+                        "pre-o_proj attention output (head_dim space; not residual dim). "
+                        "IG input is the token embedding propagated through blocks 0..l-1, "
+                        "not z^(l) as in the GPT-2/Llama adapters"
                     ),
                     "heads": {},
                 }
@@ -1105,16 +1124,14 @@ def describe_boundaries(
         return info
     if model_type in DECODER_FAMILY_TYPES:
         adapter = load_adapter(model, device=device, allow_decoder_stub=True)
-        from utils.calculations.ig.gemma3.block_forward import get_gemma3_text_model
+        probe = adapter.model
+        if model_type == "gemma3":
+            from utils.calculations.ig.gemma3.block_forward import get_gemma3_text_model
 
-        try:
-            probe = (
-                get_gemma3_text_model(adapter.model)
-                if model_type == "gemma3"
-                else adapter.model
-            )
-        except AttributeError:
-            probe = adapter.model
+            try:
+                probe = get_gemma3_text_model(adapter.model)
+            except AttributeError:
+                probe = adapter.model
         info = detect_boundaries(probe).as_dict()
         info["model"] = model
         info["ig_ready"] = model_type in (

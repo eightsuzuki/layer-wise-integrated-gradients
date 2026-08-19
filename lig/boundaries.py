@@ -123,10 +123,13 @@ def _layer_has(name: str, layer: nn.Module) -> bool:
 
 def _inspect_layer_layout(layer: nn.Module) -> BlockLayout:
     """Infer block wiring from the first layer module."""
+    # Gemma2 shares the pre+post-LN wiring but has neither q_norm/k_norm nor a
+    # local RoPE, so it must not be routed into the Gemma3-only helpers.
     if (
         _layer_has("self_attn", layer)
         and _layer_has("mlp", layer)
         and _layer_has("pre_feedforward_layernorm", layer)
+        and hasattr(getattr(layer, "self_attn", None), "q_norm")
     ):
         return BlockLayout.PRE_POST_LN_DECODER
     if _layer_has("attn", layer) and _layer_has("mlp", layer) and _layer_has("ln_1", layer):

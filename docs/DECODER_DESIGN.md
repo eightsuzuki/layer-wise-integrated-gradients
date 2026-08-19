@@ -51,6 +51,15 @@ Notes:
   projection, post-attention RMSNorm, the fixed `z` residual, and the FFN.
 - `n_head * head_dim` may differ from `hidden_size`
   (e.g. 8×256 = 2048 ≠ 2560 on gemma-3-4b-it).
+- **ATT IG input space**: Gemma3 z→u interpolates the *token embeddings* and
+  replays blocks `0 .. l-1` (as `gpt2_attention_models.py` does), while the
+  GPT-2 / Llama adapters in `lig/adapters/decoder_ig/` interpolate z^(l)
+  directly. This is not cosmetic: Gemma3's `u` sits before `o_proj` and has no
+  residual term, so RMSNorm makes it scale invariant in z (`u(a·z) = u(z)`), and
+  interpolating z^(l) would collapse the `zero` / `itb_zero_ratio` baselines to
+  ~zero attributions (pinned by `test/test_gemma3_block_parity.py`). Gemma3 ATT
+  scores are therefore embedding-space attributions — do not compare them
+  head-to-head with GPT-2 / Llama z→u values.
 - Multimodal checkpoints (`model_type=gemma3`, e.g. `google/gemma-3-4b-it`) use
   `model.language_model` for LIG (public API registers `gemma3` only)
 
