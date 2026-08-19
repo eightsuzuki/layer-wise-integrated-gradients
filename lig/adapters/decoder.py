@@ -22,6 +22,7 @@ DECODER_FAMILY_TYPES = frozenset(
         "llama",
         "mistral",
         "qwen2",
+        "qwen3",
         "gemma",
         "gemma3",
         "gemma3_text",  # text-only checkpoints (e.g. google/gemma-3-1b-it)
@@ -32,7 +33,8 @@ DECODER_FAMILY_TYPES = frozenset(
 GEMMA3_MODEL_TYPES = frozenset({"gemma3", "gemma3_text"})
 
 IG_READY_DECODER_TYPES = frozenset(
-    {"gpt2", "llama", "mistral", "qwen2", "gemma"} | GEMMA3_MODEL_TYPES
+    {"gpt2", "llama", "mistral", "qwen2", "qwen3", "gemma"}
+    | GEMMA3_MODEL_TYPES
 )
 
 

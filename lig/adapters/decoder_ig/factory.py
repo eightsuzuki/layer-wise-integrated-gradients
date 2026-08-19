@@ -10,9 +10,11 @@ from transformers import AutoConfig
 from lig.adapters.decoder_ig.base import DecoderIGAdapter
 from lig.adapters.decoder_ig.gpt2 import GPT2Adapter
 from lig.adapters.decoder_ig.llama import LlamaIGAdapter
+from lig.adapters.decoder_ig.qwen3 import Qwen3IGAdapter
 
 LLAMA_DECODER_TYPES = frozenset({"llama", "mistral", "qwen2", "gemma"})
-DECODER_IG_MODEL_TYPES = frozenset({"gpt2"}) | LLAMA_DECODER_TYPES
+QWEN3_DECODER_TYPES = frozenset({"qwen3"})
+DECODER_IG_MODEL_TYPES = frozenset({"gpt2"}) | LLAMA_DECODER_TYPES | QWEN3_DECODER_TYPES
 
 
 def load_decoder_ig_adapter(
@@ -29,6 +31,14 @@ def load_decoder_ig_adapter(
         return GPT2Adapter(
             model_name=model_name,
             device=device,
+            model=model,
+            tokenizer=tokenizer,
+        )
+    if model_type in QWEN3_DECODER_TYPES:
+        return Qwen3IGAdapter(
+            model_name=model_name,
+            device=device,
+            torch_dtype=torch_dtype,
             model=model,
             tokenizer=tokenizer,
         )

@@ -74,6 +74,7 @@ lig explain "The cat sat on the mat." --steps 32 --granularity all -o attributio
 | Block-only | MPNet, DistilBERT, ModernBERT, Switch MoE encoder, Mamba | **z→z (layer) only** |
 | GPT-2 (decoder) | GPT-2 | z→u, u→z, z→z (`granularity="all"`) |
 | Gemma3 (decoder) | `google/gemma-3-4b-it` (`gemma3`), `google/gemma-3-1b-it` (`gemma3_text`) | z→u, u→z, z→z |
+| Qwen3 (decoder) | `Qwen/Qwen3-1.7B` | z→u, u→z, z→z (`granularity="all"`) |
 
 GPT-2 example:
 
@@ -95,6 +96,21 @@ explain(
     "Hello world",
     model="google/gemma-3-4b-it",
     granularity="all",
+    layers=[0],
+    target_tokens=[1],
+    target_head=0,
+)
+```
+
+Qwen3-1.7B example (`u` is the post-attention residual / MLP input):
+
+```python
+explain(
+    "Hello world",
+    model="Qwen/Qwen3-1.7B",
+    granularity="all",
+    baseline_att="zero",
+    baseline_mlp="zero",
     layers=[0],
     target_tokens=[1],
     target_head=0,

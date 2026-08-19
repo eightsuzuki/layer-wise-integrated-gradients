@@ -1,7 +1,7 @@
 """Model adapters for encoder / decoder Transformers."""
 
 from lig.adapters.decoder import DECODER_FAMILY_TYPES, DecoderAdapter
-from lig.adapters.decoder_ig import GPT2Adapter
+from lig.adapters.decoder_ig import GPT2Adapter, Qwen3IGAdapter
 from lig.adapters.encoder import (
     BERT_FAMILY_TYPES,
     ENCODER_TYPES,
@@ -16,6 +16,7 @@ __all__ = [
     "LAYER_ONLY_ENCODER_TYPES",
     "DECODER_FAMILY_TYPES",
     "DecoderAdapter",
+    "Qwen3IGAdapter",
     "EncoderAdapter",
     "GPT2Adapter",
     "load_adapter",
