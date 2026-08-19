@@ -28,13 +28,19 @@ def get_encoder_stack(model: nn.Module) -> nn.Module:
     if model_type == "distilbert":
         return model.transformer
 
-    # Decoder-only causal LMs (GPT-2, Llama, …)
+    # Decoder-only causal LMs (GPT-2, Llama, Gemma3, …)
     if hasattr(model, "layers") and isinstance(getattr(model, "layers", None), nn.ModuleList):
         return model
     if hasattr(model, "transformer") and hasattr(model.transformer, "h"):
         return model.transformer
+    if hasattr(model, "language_model"):
+        return get_encoder_stack(model.language_model)
+    if hasattr(model, "model") and hasattr(getattr(model, "model"), "language_model"):
+        return get_encoder_stack(model.model.language_model)
     if hasattr(model, "model") and hasattr(getattr(model, "model"), "layers"):
         return model.model
+    if hasattr(model, "layers"):
+        return model
     if hasattr(model, "h"):
         return model
 

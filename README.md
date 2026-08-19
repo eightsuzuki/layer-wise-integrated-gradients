@@ -72,7 +72,8 @@ lig explain "The cat sat on the mat." --steps 32 --granularity all -o attributio
 |--------|--------|---------------|
 | BERT-style | BERT, RoBERTa, DeBERTa, ELECTRA, XLM-RoBERTa, … | z→u, u→z, z→z |
 | Block-only | MPNet, DistilBERT, ModernBERT, Switch MoE encoder, Mamba | **z→z (layer) only** |
-| GPT-2 (decoder) | z→u, u→z, z→z (`granularity="all"`) | — |
+| GPT-2 (decoder) | GPT-2 | z→u, u→z, z→z (`granularity="all"`) |
+| Gemma3 (decoder) | `google/gemma-3-4b-it` (`gemma3`) | z→u, u→z, z→z |
 
 GPT-2 example:
 
@@ -84,6 +85,19 @@ explain(
     baseline_att="self_input_token",   # or itb_zero_ratio / itb_map_ratio
     baseline_mlp="att_itb_a0",         # or zero
     layers=[0],
+)
+```
+
+Gemma3 example (prefer scoped layers / tokens / head — full ATT is expensive):
+
+```python
+explain(
+    "Hello world",
+    model="google/gemma-3-4b-it",
+    granularity="all",
+    layers=[0],
+    target_tokens=[1],
+    target_head=0,
 )
 ```
 
