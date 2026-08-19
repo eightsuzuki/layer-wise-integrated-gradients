@@ -60,8 +60,10 @@ Notes:
   ~zero attributions (pinned by `test/test_gemma3_block_parity.py`). Gemma3 ATT
   scores are therefore embedding-space attributions — do not compare them
   head-to-head with GPT-2 / Llama z→u values.
-- Multimodal checkpoints (`model_type=gemma3`, e.g. `google/gemma-3-4b-it`) use
-  `model.language_model` for LIG (public API registers `gemma3` only)
+- Both config flavours are registered: multimodal (`model_type=gemma3`, e.g.
+  `google/gemma-3-4b-it`), which reaches the text stack through
+  `model.language_model`, and text-only (`model_type=gemma3_text`, e.g.
+  `google/gemma-3-1b-it`), which is already a `Gemma3TextModel`
 
 Llama / Mistral / Qwen2 (not yet wired): `model.layers[l].self_attn` + `mlp`.
 
@@ -111,6 +113,7 @@ and Gemma3 through its dedicated pre+post-LN path.
 - [x] SwiGLU / Gemma3MLP path (`mlp/gemma3_mlp_lig_ig.py`)
 - [x] Layer-direct IG (`z2z/gemma3_layer_direct_ig.py`)
 - [x] `lig.explain(..., model="google/gemma-3-4b-it")` via `_run_explain_gemma3`
+- [x] Text-only `gemma3_text` checkpoints (`google/gemma-3-1b-it`)
 
 ### Phase 3 — Composition & demos
 
@@ -138,6 +141,8 @@ utils/calculations/ig/
 ```
 
 `test/test_lig_api.py` — GPT-2 smoke; Gemma3-4b-it marked `@pytest.mark.slow`.
+`test/test_gemma3_block_parity.py` — offline parity against Transformers;
+`test/test_gemma3_explain_e2e.py` — `explain()` on tiny public Gemma3 checkpoints.
 
 ---
 

@@ -71,7 +71,7 @@ def explain_to_json(text: str, **kwargs: Any) -> str:
 def _run_explain(text: str, cfg: LIGConfig) -> Dict[str, Any]:
     from transformers import AutoConfig
 
-    from lig.adapters.decoder import DECODER_FAMILY_TYPES
+    from lig.adapters.decoder import DECODER_FAMILY_TYPES, GEMMA3_MODEL_TYPES
     from lig.adapters.encoder import EncoderAdapter
 
     model_type = getattr(AutoConfig.from_pretrained(cfg.model), "model_type", "unknown")
@@ -79,14 +79,14 @@ def _run_explain(text: str, cfg: LIGConfig) -> Dict[str, Any]:
 
     from lig.adapters.decoder_ig import DECODER_IG_MODEL_TYPES
 
-    if model_type == "gemma3":
-        return _run_explain_gemma3(text, cfg)
+    if model_type in GEMMA3_MODEL_TYPES:
+        return _run_explain_gemma3(text, cfg, model_type)
     if model_type in DECODER_IG_MODEL_TYPES:
         return _run_explain_decoder(text, cfg, model_type)
     if model_type in DECODER_FAMILY_TYPES:
         raise NotImplementedError(
             f"Decoder model '{cfg.model}' ({model_type}) is not implemented yet. "
-            f"Supported decoder IG: {sorted(DECODER_IG_MODEL_TYPES | {'gemma3'})}. "
+            f"Supported decoder IG: {sorted(DECODER_IG_MODEL_TYPES | GEMMA3_MODEL_TYPES)}. "
             f"Requested: {modes}. See docs/DECODER_DESIGN.md."
         )
 
@@ -410,7 +410,7 @@ def _gemma3_baseline_embeddings(
     )
 
 
-def _run_explain_gemma3(text: str, cfg: LIGConfig) -> Dict[str, Any]:
+def _run_explain_gemma3(text: str, cfg: LIGConfig, model_type: str = "gemma3") -> Dict[str, Any]:
     """Gemma3 decoder: z→u (ATT), u→z (MLP), z→z (layer) with pre+post-LN blocks."""
     import warnings
 
@@ -490,7 +490,7 @@ def _run_explain_gemma3(text: str, cfg: LIGConfig) -> Dict[str, Any]:
         "text": text,
         "tokens": tokens,
         "model": cfg.model,
-        "model_type": "gemma3",
+        "model_type": model_type,
         "architecture": "decoder",
         "config": {
             "num_steps": cfg.num_steps,
@@ -1105,7 +1105,11 @@ def describe_boundaries(
     """
     from transformers import AutoConfig
 
-    from lig.adapters.decoder import DECODER_FAMILY_TYPES
+    from lig.adapters.decoder import (
+        DECODER_FAMILY_TYPES,
+        GEMMA3_MODEL_TYPES,
+        IG_READY_DECODER_TYPES,
+    )
     from lig.adapters.encoder import ENCODER_TYPES
     from lig.adapters.factory import load_adapter
     from lig.boundaries import describe_boundaries_from_config, detect_boundaries
@@ -1125,7 +1129,7 @@ def describe_boundaries(
     if model_type in DECODER_FAMILY_TYPES:
         adapter = load_adapter(model, device=device, allow_decoder_stub=True)
         probe = adapter.model
-        if model_type == "gemma3":
+        if model_type in GEMMA3_MODEL_TYPES:
             from utils.calculations.ig.gemma3.block_forward import get_gemma3_text_model
 
             try:
@@ -1134,14 +1138,7 @@ def describe_boundaries(
                 probe = adapter.model
         info = detect_boundaries(probe).as_dict()
         info["model"] = model
-        info["ig_ready"] = model_type in (
-            "gpt2",
-            "llama",
-            "mistral",
-            "qwen2",
-            "gemma",
-            "gemma3",
-        )
+        info["ig_ready"] = model_type in IG_READY_DECODER_TYPES
         return info
 
     raise ValueError(

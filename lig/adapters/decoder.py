@@ -24,10 +24,16 @@ DECODER_FAMILY_TYPES = frozenset(
         "qwen2",
         "gemma",
         "gemma3",
+        "gemma3_text",  # text-only checkpoints (e.g. google/gemma-3-1b-it)
     }
 )
 
-_IG_READY_TYPES = frozenset({"gpt2", "llama", "mistral", "qwen2", "gemma", "gemma3"})
+# Gemma3 ships as multimodal ("gemma3") and text-only ("gemma3_text") configs.
+GEMMA3_MODEL_TYPES = frozenset({"gemma3", "gemma3_text"})
+
+IG_READY_DECODER_TYPES = frozenset(
+    {"gpt2", "llama", "mistral", "qwen2", "gemma"} | GEMMA3_MODEL_TYPES
+)
 
 @dataclass
 class DecoderAdapter:
@@ -69,7 +75,7 @@ class DecoderAdapter:
         if torch_dtype is not None:
             load_kwargs["torch_dtype"] = torch_dtype
 
-        if model_type == "gemma3":
+        if model_type in GEMMA3_MODEL_TYPES:
             model = AutoModel.from_pretrained(model_name, **load_kwargs)
         else:
             model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
@@ -142,10 +148,10 @@ class DecoderAdapter:
         return hidden
 
     def ensure_ig_ready(self) -> None:
-        if self.model_type in _IG_READY_TYPES:
+        if self.model_type in IG_READY_DECODER_TYPES:
             return
         raise NotImplementedError(
             f"Decoder LIG is not implemented yet for {self.model_type} ({self.model_name}). "
-            f"Supported: {sorted(_IG_READY_TYPES)}. "
+            f"Supported: {sorted(IG_READY_DECODER_TYPES)}. "
             "See docs/DECODER_DESIGN.md for the planned API."
         )

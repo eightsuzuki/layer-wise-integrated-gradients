@@ -73,7 +73,7 @@ lig explain "The cat sat on the mat." --steps 32 --granularity all -o attributio
 | BERT-style | BERT, RoBERTa, DeBERTa, ELECTRA, XLM-RoBERTa, … | z→u, u→z, z→z |
 | Block-only | MPNet, DistilBERT, ModernBERT, Switch MoE encoder, Mamba | **z→z (layer) only** |
 | GPT-2 (decoder) | GPT-2 | z→u, u→z, z→z (`granularity="all"`) |
-| Gemma3 (decoder) | `google/gemma-3-4b-it` (`gemma3`) | z→u, u→z, z→z |
+| Gemma3 (decoder) | `google/gemma-3-4b-it` (`gemma3`), `google/gemma-3-1b-it` (`gemma3_text`) | z→u, u→z, z→z |
 
 GPT-2 example:
 

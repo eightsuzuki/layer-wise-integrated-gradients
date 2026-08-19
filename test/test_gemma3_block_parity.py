@@ -208,3 +208,174 @@ def test_torchvision_guard_restores_flag():
     with _torchvision_disabled():
         assert import_utils._torchvision_available is False
     assert import_utils._torchvision_available is original
+
+
+def test_layer_direct_ig_is_causal_and_complete(tiny_gemma3):
+    """z→z IG: one column per target token, causal, and complete per column."""
+    from utils.calculations.ig.z2z.gemma3_layer_direct_ig import (
+        compute_gemma3_layer_direct_ig_all_targets,
+        compute_gemma3_layer_direct_ig_single_target,
+        Gemma3LayerDirectIGWrapper,
+    )
+
+    input_ids = torch.tensor([[1, 5, 9, 12]])
+    _, hidden_states = _hidden_states(tiny_gemma3, input_ids)
+    layer_idx = 1
+    z = hidden_states[layer_idx]
+    seq_len = input_ids.shape[1]
+
+    matrix = compute_gemma3_layer_direct_ig_all_targets(
+        tiny_gemma3, z, layer_idx, num_steps=16, baseline_method="self_input_token"
+    )
+    assert matrix.shape == (seq_len, seq_len)
+    for target in range(seq_len):
+        # column `target` holds the contributions of every source token
+        assert abs(matrix[target + 1 :, target]).max(initial=0.0) < 1e-4
+
+    target_token_idx = 2
+    values = compute_gemma3_layer_direct_ig_single_target(
+        tiny_gemma3,
+        z,
+        layer_idx,
+        target_token_idx,
+        num_steps=32,
+        baseline_method="self_input_token",
+    )
+    baseline_z = z[0, target_token_idx, :].expand_as(z[0]).unsqueeze(0).clone()
+    wrapper = Gemma3LayerDirectIGWrapper(tiny_gemma3, layer_idx, target_token_idx)
+    wrapper.eval()
+    wrapper.set_baseline_output(baseline_z)
+    with torch.no_grad():
+        total = float(wrapper(z).item())
+    assert abs(float(values.sum()) - total) / abs(total) < 0.25
+
+
+def test_boundaries_helpers_match_block_forward(tiny_gemma3):
+    """lig.boundaries u_from_z / forward_block agree with the Gemma3 helpers."""
+    from lig.boundaries import (
+        BlockLayout,
+        detect_boundaries,
+        forward_block,
+        resolve_hook_modules,
+        u_from_z,
+    )
+    from utils.calculations.ig.gemma3.block_forward import (
+        attn_pre_oproj_output,
+        layer_attention_mask,
+        rope_position_embeddings,
+    )
+
+    input_ids = torch.tensor([[1, 5, 9, 12]])
+    _, hidden_states = _hidden_states(tiny_gemma3, input_ids)
+    layer_idx, target_token_idx = 1, 2
+    z = hidden_states[layer_idx]
+    attention_mask = torch.ones_like(input_ids)
+
+    boundaries = detect_boundaries(tiny_gemma3)
+    assert boundaries.layout == BlockLayout.PRE_POST_LN_DECODER
+    assert boundaries.architecture == "decoder"
+    assert set(boundaries.supported_granularity) == {"att", "layer", "mlp"}
+
+    u = u_from_z(
+        model=tiny_gemma3,
+        boundaries=boundaries,
+        layer_idx=layer_idx,
+        z_layer=z,
+        attention_mask=attention_mask,
+        target_token_idx=target_token_idx,
+    )
+    block = tiny_gemma3.layers[layer_idx]
+    mask = layer_attention_mask(tiny_gemma3, layer_idx, z.shape[1], z.device, z.dtype)
+    global_pe, local_pe = rope_position_embeddings(tiny_gemma3, z)
+    pe = local_pe if block.self_attn.is_sliding else global_pe
+    with torch.no_grad():
+        expected = attn_pre_oproj_output(block, block.input_layernorm(z), mask, pe)
+    assert torch.allclose(u, expected[0, target_token_idx, :], atol=1e-5)
+    config = tiny_gemma3.config
+    assert u.shape[0] == config.num_attention_heads * config.head_dim
+
+    z_next = forward_block(
+        model=tiny_gemma3,
+        boundaries=boundaries,
+        layer_idx=layer_idx,
+        hidden_states=z,
+        attention_mask=attention_mask,
+    )
+    assert torch.allclose(z_next, hidden_states[layer_idx + 1], atol=1e-5)
+
+    hooks = resolve_hook_modules(block, boundaries)
+    assert hooks["att_core"] is block.self_attn
+    # u lives inside self_attn, so there is no module to hook it on.
+    assert hooks["att_output"] is None
+
+
+def test_get_gemma3_text_model_resolves_wrappers(tiny_gemma3):
+    """Text / causal-LM / multimodal wrappers all resolve to the text model."""
+    import torch.nn as nn
+
+    from utils.calculations.ig.gemma3.block_forward import get_gemma3_text_model
+
+    class Wrapper(nn.Module):
+        def __init__(self, attr, inner):
+            super().__init__()
+            setattr(self, attr, inner)
+
+    causal_lm = Wrapper("model", tiny_gemma3)  # Gemma3ForCausalLM
+    multimodal = Wrapper("language_model", tiny_gemma3)  # Gemma3Model
+    conditional = Wrapper("model", multimodal)  # Gemma3ForConditionalGeneration
+
+    assert get_gemma3_text_model(tiny_gemma3) is tiny_gemma3
+    for wrapper in (causal_lm, multimodal, conditional):
+        assert get_gemma3_text_model(wrapper) is tiny_gemma3
+
+    with pytest.raises(AttributeError):
+        get_gemma3_text_model(nn.Linear(2, 2))
+
+
+def test_encoder_stack_resolution(tiny_gemma3):
+    import torch.nn as nn
+
+    from lig.encoder_access import get_encoder_layers, get_encoder_stack
+
+    class Multimodal(nn.Module):
+        def __init__(self, inner):
+            super().__init__()
+            self.language_model = inner
+
+    assert get_encoder_stack(tiny_gemma3) is tiny_gemma3
+    assert get_encoder_stack(Multimodal(tiny_gemma3)) is tiny_gemma3
+    assert len(get_encoder_layers(tiny_gemma3)) == tiny_gemma3.config.num_hidden_layers
+
+
+def test_invalid_inputs_are_rejected(tiny_gemma3):
+    from lig.api import _gemma3_baseline_embeddings
+    from utils.calculations.ig.mlp.gemma3_mlp_lig_ig import compute_gemma3_mlp_lig_single_token
+
+    embeddings = torch.zeros(1, 3, tiny_gemma3.config.hidden_size)
+    with pytest.raises(ValueError, match="baseline_att"):
+        _gemma3_baseline_embeddings(embeddings, "not_a_baseline", 0)
+
+    z = torch.zeros(1, 3, tiny_gemma3.config.hidden_size)
+    wrong_width = torch.zeros(1, 7)
+    with pytest.raises(ValueError, match="concatenated-head"):
+        compute_gemma3_mlp_lig_single_token(
+            tiny_gemma3,
+            layer_idx=0,
+            z_layer=z,
+            target_mlp_input=wrong_width,
+            baseline_mlp_input=wrong_width,
+            target_token_idx=0,
+            num_steps=4,
+        )
+
+    width = tiny_gemma3.config.num_attention_heads * tiny_gemma3.config.head_dim
+    with pytest.raises(ValueError, match="must match"):
+        compute_gemma3_mlp_lig_single_token(
+            tiny_gemma3,
+            layer_idx=0,
+            z_layer=z,
+            target_mlp_input=torch.zeros(1, width),
+            baseline_mlp_input=torch.zeros(1, width + 1),
+            target_token_idx=0,
+            num_steps=4,
+        )

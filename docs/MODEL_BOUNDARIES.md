@@ -16,7 +16,7 @@ LIG treats each Transformer block as a residual stream with ATT and MLP module b
 |--------|----------------|---------------|
 | `post_ln_encoder` | BERT, RoBERTa, DeBERTa, ELECTRA | att, mlp, layer |
 | `pre_ln_decoder` | GPT-2, GPT-NeoX (planned) | att, mlp, layer |
-| `pre_post_ln_decoder` | Gemma3 (e.g. google/gemma-3-4b-it) | att, mlp, layer |
+| `pre_post_ln_decoder` | Gemma3 — `gemma3` (google/gemma-3-4b-it) and `gemma3_text` (google/gemma-3-1b-it) | att, mlp, layer |
 | `block_only` | MPNet, DistilBERT, ModernBERT, Switch, Mamba | layer only |
 
 Known families can override introspection via `model_type` (e.g. MPNet has BERT-like submodules but uses layer-only IG today).

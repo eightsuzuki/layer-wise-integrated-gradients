@@ -61,7 +61,8 @@ _POST_LN_ENCODER_TYPES = frozenset(
 )
 
 _PRE_LN_DECODER_TYPES = frozenset({"gpt2", "gpt_neox", "llama", "mistral", "qwen2", "gemma"})
-_GEMMA_DECODER_TYPES = frozenset({"gemma3"})
+# "gemma3" = multimodal checkpoints, "gemma3_text" = text-only (gemma-3-1b-it)
+_GEMMA_DECODER_TYPES = frozenset({"gemma3", "gemma3_text"})
 
 
 @dataclass(frozen=True)
