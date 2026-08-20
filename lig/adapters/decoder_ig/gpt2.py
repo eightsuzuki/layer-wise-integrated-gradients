@@ -9,8 +9,11 @@ import numpy as np
 import torch
 from captum.attr import IntegratedGradients
 from transformers import GPT2Model, GPT2TokenizerFast
+from transformers.models.gpt2.modeling_gpt2 import (
+    eager_attention_forward as gpt2_eager_attention_forward,
+)
 
-from lig.adapters.decoder_ig.base import DecoderIGAdapter
+from lig.adapters.decoder_ig.base import DecoderIGAdapter, check_completeness
 from lig.adapters.decoder_ig.mlp_ig import make_probe_direction_forward, run_mlp_input_ig
 
 
@@ -372,27 +375,18 @@ class GPT2Adapter(DecoderIGAdapter):
             outputs = block.attn(z_norm, attention_mask=None, output_attentions=False)
             return outputs[0][:, target_token_idx, :]
 
-        try:
-            qkv = block.attn.c_attn(z_norm)
-            query, key, value = qkv.split(self.hidden_size, dim=2)
-            query = block.attn._split_heads(query, self.num_heads, self.head_dim)
-            key = block.attn._split_heads(key, self.num_heads, self.head_dim)
-            value = block.attn._split_heads(value, self.num_heads, self.head_dim)
-            attn_outputs = block.attn._attn(
-                query,
-                key,
-                value,
-                attention_mask=None,
-                head_mask=None,
-            )
-            attn_output = attn_outputs[0] if isinstance(attn_outputs, tuple) else attn_outputs
-            return attn_output[:, head_idx, target_token_idx, :]
-        except Exception:
-            outputs = block.attn(z_norm, attention_mask=None, output_attentions=False)
-            attn_delta = outputs[0]
-            start = head_idx * self.head_dim
-            end = start + self.head_dim
-            return attn_delta[:, target_token_idx, start:end]
+        # Keep the head boundary before c_proj.  Slicing c_proj's output would
+        # only split mixed residual coordinates, not recover per-head outputs.
+        attn = block.attn
+        query, key, value = attn.c_attn(z_norm).split(attn.split_size, dim=2)
+        shape = (*query.shape[:-1], -1, attn.head_dim)
+        query = query.view(shape).transpose(1, 2)
+        key = key.view(shape).transpose(1, 2)
+        value = value.view(shape).transpose(1, 2)
+        head_outputs, _ = gpt2_eager_attention_forward(
+            attn, query, key, value, attention_mask=None
+        )
+        return head_outputs[:, target_token_idx, head_idx, :]
 
     def mlp_output(self, layer_idx: int, mlp_input: torch.Tensor) -> torch.Tensor:
         block = self.decoder.h[layer_idx]
@@ -482,9 +476,6 @@ class GPT2Adapter(DecoderIGAdapter):
             return_convergence_delta=False,
         )
         values = attributions.sum(dim=-1).squeeze(0).detach().cpu().numpy()
-        # Future tokens are masked by GPT-2 causality; zero tiny numerical noise explicitly.
-        if target_token_idx + 1 < values.shape[0]:
-            values[target_token_idx + 1 :] = 0.0
 
         with torch.no_grad():
             actual = float(forward_fn(z.float()).detach().cpu().item())
@@ -500,7 +491,9 @@ class GPT2Adapter(DecoderIGAdapter):
             "theoretical_diff": theoretical_diff,
             "ig_sum": ig_sum,
             "relative_error": float(relative_error),
-            "is_valid": bool(relative_error < 0.2),
+            "is_valid": check_completeness(
+                relative_error, where=f"GPT-2 ATT IG (layer {layer_idx}, head {head_idx})"
+            ),
         }
 
         raw_values: Optional[np.ndarray] = None

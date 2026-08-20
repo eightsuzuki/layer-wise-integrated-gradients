@@ -8,6 +8,8 @@ import numpy as np
 import torch
 from captum.attr import IntegratedGradients
 
+from lig.adapters.decoder_ig.base import check_completeness
+
 
 def run_mlp_input_ig(
     *,
@@ -53,7 +55,7 @@ def run_mlp_input_ig(
         "theoretical_diff": theoretical_diff,
         "ig_sum": total,
         "relative_error": float(relative_error),
-        "is_valid": bool(relative_error < 0.2),
+        "is_valid": check_completeness(relative_error, where="MLP u->z IG"),
         "target_mode": target_mode,
         "baseline_u_norm": float(torch.norm(baseline_u).detach().cpu().item()),
         "target_u_norm": float(torch.norm(u).detach().cpu().item()),

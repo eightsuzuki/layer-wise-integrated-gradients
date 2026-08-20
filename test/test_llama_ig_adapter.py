@@ -190,3 +190,109 @@ def test_explain_llama_tiny_mlp():
     u2z = result["layers"]["0"]["targets"]["0"]["u2z"]
     assert len(u2z["contributions"]) == 16
     assert u2z["l2_total"] >= 0.0
+
+
+# --- regression tests for the 2026-08-19 causal-mask / per-head audit ---------
+#
+# Three bugs survived for months because the only guard, the causal-mask test
+# above, asserted on values that ``compute_attention_ig`` had explicitly zeroed
+# just before returning.  It tested the workaround, not the property.  These
+# tests assert the properties directly.
+
+
+def test_llama_cache_matches_model_hidden_states(tiny_llama_adapter):
+    """Hand-rolled block loop must reproduce the model's own forward.
+
+    Without the causal mask the loop runs bidirectional attention and drifts
+    layer by layer (rel. distance 0.296 at block 3 on Llama-2-7B).
+    """
+    import torch
+
+    ad = tiny_llama_adapter
+    inputs = ad.encode("one two three four five six")
+    ad.cache(inputs)
+    with torch.no_grad():
+        hidden_states = ad.model(**inputs, output_hidden_states=True).hidden_states
+    for layer_idx in range(ad.num_layers):
+        assert torch.allclose(
+            ad.get_z(layer_idx), hidden_states[layer_idx], atol=1e-4
+        ), f"block {layer_idx} diverges from the model's own hidden states"
+
+
+def test_llama_attention_output_ignores_future_tokens(tiny_llama_adapter):
+    """Perturbing future positions must not move the target's attention output."""
+    import torch
+
+    ad = tiny_llama_adapter
+    ad.cache(ad.encode("one two three four five six"))
+    z = ad.get_z(0)
+    target = 2
+    perturbed = z.clone()
+    perturbed[:, target + 1 :, :] += 100.0
+    assert torch.allclose(
+        ad.attention_output(0, z, target), ad.attention_output(0, perturbed, target), atol=1e-4
+    )
+    # ... and it must still depend on the past, or the test above is vacuous.
+    past = z.clone()
+    past[:, target - 1, :] += 100.0
+    assert not torch.allclose(
+        ad.attention_output(0, z, target), ad.attention_output(0, past, target), atol=1e-3
+    )
+
+
+def test_llama_per_head_outputs_reconstruct_attention(tiny_llama_adapter):
+    """Per-head outputs live before o_proj, so o_proj(concat) == the full output.
+
+    Slicing the *post*-o_proj vector by ``head_dim`` (the previous behaviour)
+    splits mixed residual coordinates and passes no such identity.
+    """
+    import torch
+
+    ad = tiny_llama_adapter
+    ad.cache(ad.encode("one two three four five six"))
+    z = ad.get_z(0)
+    target = 3
+    full = ad.attention_output(0, z, target)
+    heads = torch.cat(
+        [ad.attention_output(0, z, target, head_idx=h) for h in range(ad.num_heads)], dim=-1
+    )
+    o_proj = ad.decoder.layers[0].self_attn.o_proj
+    assert torch.allclose(o_proj(heads), full, atol=1e-4)
+
+
+def test_llama_attention_ig_completeness_and_zero_future_attribution(tiny_llama_adapter):
+    """No post-hoc zeroing: future attributions must be zero on their own."""
+    import numpy as np
+
+    ad = tiny_llama_adapter
+    ad.cache(ad.encode("one two three four five six"))
+    target = 3
+    for probe_w in (None, np.ones(ad.hidden_size)):
+        result = ad.compute_attention_ig(
+            0, target_token_idx=target, baseline="zero", num_steps=32, probe_w=probe_w
+        )
+        assert result.verification["relative_error"] < 0.02
+        assert np.abs(result.values[target + 1 :]).max() == 0.0
+
+
+def test_completeness_guard_warns_when_unconverged():
+    """An unconverged attribution must announce itself, not just set a dict key.
+
+    This is the trap the Qwen2.5 sweep hit: at the default step count the
+    completeness error was 1.005 while the ranking scored best of any method.
+    """
+    import warnings
+
+    from lig.adapters.decoder_ig.base import COMPLETENESS_TOLERANCE, check_completeness
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert check_completeness(COMPLETENESS_TOLERANCE / 2, where="unit") is True
+    assert not caught
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert check_completeness(1.005, where="unit") is False
+    assert len(caught) == 1
+    assert issubclass(caught[0].category, RuntimeWarning)
+    assert "num_steps" in str(caught[0].message)

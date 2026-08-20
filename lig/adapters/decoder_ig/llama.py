@@ -10,7 +10,7 @@ from captum.attr import IntegratedGradients
 from transformers import AutoModel, AutoTokenizer
 from transformers.models.llama.modeling_llama import apply_rotary_pos_emb, eager_attention_forward
 
-from lig.adapters.decoder_ig.base import DecoderIGAdapter
+from lig.adapters.decoder_ig.base import DecoderIGAdapter, check_completeness
 from lig.adapters.decoder_ig.mlp_ig import make_probe_direction_forward, run_mlp_input_ig
 from lig.adapters.decoder_ig.gpt2 import (
     ATT_BASELINES,
@@ -369,7 +369,9 @@ class LlamaIGAdapter(DecoderIGAdapter):
             "ig_sum": ig_sum,
             "relative_error": float(relative_error),
             "captum_convergence_delta": float(convergence_delta.abs().max().detach().cpu()),
-            "is_valid": bool(relative_error < 0.02),
+            "is_valid": check_completeness(
+                relative_error, where=f"Llama ATT IG (layer {layer_idx}, head {head_idx})"
+            ),
         }
 
         raw_values: Optional[np.ndarray] = None
