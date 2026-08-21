@@ -60,6 +60,15 @@ def test_llama_attention_output_is_causal(tiny_llama_adapter):
         perturbed = adapter.attention_output(0, perturbed_z, target_token_idx, head_idx)
         torch.testing.assert_close(clean, perturbed)
 
+        # The other half of causality: a past source must actually move the target.
+        # Invariance alone also holds for an output that ignores its input entirely.
+        past_z = z.clone()
+        past_z[:, target_token_idx - 1, :] += 100.0
+        moved = adapter.attention_output(0, past_z, target_token_idx, head_idx)
+        assert not torch.allclose(clean, moved, atol=1e-3), (
+            f"head {head_idx}: perturbing a past source left the target unchanged"
+        )
+
 
 def test_llama_cache_matches_model_hidden_states(tiny_llama_adapter):
     """The hand-rolled block loop must reproduce the model's own forward."""
@@ -200,11 +209,12 @@ def test_explain_llama_tiny_mlp():
 # tests assert the properties directly.
 
 
-def test_llama_cache_matches_model_hidden_states(tiny_llama_adapter):
-    """Hand-rolled block loop must reproduce the model's own forward.
+def test_llama_cache_matches_model_hidden_states_longer_sequence(tiny_llama_adapter):
+    """Same check as above on a longer sequence, where drift compounds.
 
     Without the causal mask the loop runs bidirectional attention and drifts
-    layer by layer (rel. distance 0.296 at block 3 on Llama-2-7B).
+    layer by layer (rel. distance 0.296 at block 3 on Llama-2-7B).  Kept under a
+    distinct name: two `def`s of one name leave only the second one running.
     """
     import torch
 
