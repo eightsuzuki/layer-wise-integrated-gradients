@@ -14,7 +14,11 @@ from transformers.models.gpt2.modeling_gpt2 import (
 )
 
 from lig.adapters.decoder_ig.base import DecoderIGAdapter, check_completeness
-from lig.adapters.decoder_ig.mlp_ig import make_probe_direction_forward, run_mlp_input_ig
+from lig.adapters.decoder_ig.mlp_ig import (
+    make_probe_direction_forward,
+    run_mlp_head_space_ig,
+    run_mlp_input_ig,
+)
 
 
 # LIG public baseline names (see lig/config.py)
@@ -388,6 +392,86 @@ class GPT2Adapter(DecoderIGAdapter):
         )
         return head_outputs[:, target_token_idx, head_idx, :]
 
+    def head_outputs(self, layer_idx: int, z: torch.Tensor) -> torch.Tensor:
+        """Per-head attention outputs before c_proj: [B, T, H, head_dim].
+
+        This is ``u^(l,h)`` of Eq. (mlp-o).  Slicing c_proj's output instead
+        would only split mixed residual coordinates.
+        """
+        block = self.decoder.h[layer_idx]
+        attn = block.attn
+        z_norm = block.ln_1(z)
+        query, key, value = attn.c_attn(z_norm).split(attn.split_size, dim=2)
+        shape = (*query.shape[:-1], -1, attn.head_dim)
+        query = query.view(shape).transpose(1, 2)
+        key = key.view(shape).transpose(1, 2)
+        value = value.view(shape).transpose(1, 2)
+        out, _ = gpt2_eager_attention_forward(
+            attn, query, key, value, attention_mask=None
+        )
+        return out
+
+    def compute_mlp_per_head(
+        self,
+        layer_idx: int,
+        target_token_idx: int,
+        baseline: str = MLP_ZERO,
+        num_steps: int = 32,
+        probe_w: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Per-head MLP attribution at the boundary the paper defines.
+
+        The attribution variable is ``x = concat_h a_h`` (before c_proj) and
+        ``u = z + c_proj(x)``; ``z`` stays at its actual value.  Baselines map
+        to head space as follows:
+
+        - ``zero``: ``x = 0`` (heads switched off, residual kept).  Note this
+          is not the old ``u = 0``, which also removed ``z``.
+        - ``itb``: ``x`` itself, so the displacement is zero (as before).
+        - ``att_itb_*_a0``: the head outputs the ATT module produces at its own
+          ``a = 0`` baseline, matching the ATTITBa0 hand-off.
+        """
+        baseline = normalize_mlp_baseline(baseline)
+        block = self.decoder.h[layer_idx]
+        z = self.get_z(layer_idx).detach()
+        with torch.no_grad():
+            x = self.head_outputs(layer_idx, z)[:, target_token_idx].reshape(1, -1)
+            z_tok = z[:, target_token_idx, :]
+
+            if baseline == MLP_ZERO:
+                x_base = torch.zeros_like(x)
+            elif baseline == MLP_ITB:
+                x_base = x.clone()
+            else:
+                att_a0_baselines = {
+                    MLP_ATT_ITB_A0: ATT_SELF_INPUT_TOKEN,
+                    MLP_ATT_ITB_ZR_A0: ATT_ITB_ZERO_RATIO,
+                    MLP_ATT_ITB_MAP_A0: ATT_ITB_MAP_RATIO,
+                }
+                if baseline not in att_a0_baselines:
+                    raise ValueError(f"Unsupported MLP baseline: {baseline}")
+                baseline_z = self.make_attention_baseline_z(
+                    z, target_token_idx, att_a0_baselines[baseline]
+                )
+                x_base = self.head_outputs(layer_idx, baseline_z)[
+                    :, target_token_idx
+                ].reshape(1, -1)
+
+        def to_mlp_input(x_vec: torch.Tensor) -> torch.Tensor:
+            return z_tok + block.attn.c_proj(x_vec)
+
+        per_head, _total, _verification = run_mlp_head_space_ig(
+            head_concat=x,
+            baseline_head_concat=x_base,
+            to_mlp_input=to_mlp_input,
+            mlp_output_fn=lambda u: self.mlp_output(layer_idx, u),
+            num_steps=num_steps,
+            num_heads=self.num_heads,
+            head_dim=self.head_dim,
+            probe_w=probe_w,
+        )
+        return per_head
+
     def mlp_output(self, layer_idx: int, mlp_input: torch.Tensor) -> torch.Tensor:
         block = self.decoder.h[layer_idx]
         squeeze_token_dim = False
@@ -630,13 +714,33 @@ class GPT2Adapter(DecoderIGAdapter):
         baseline: str = MLP_ZERO,
         num_steps: int = 32,
         target_token_indices: Optional[Sequence[int]] = None,
+        per_head_boundary: str = "pre_proj",
     ) -> np.ndarray:
+        """Per-token x per-head MLP attributions.
+
+        ``per_head_boundary`` selects where heads are cut:
+
+        - ``"pre_proj"`` (default): the boundary of Eq. (mlp-o) -- attribution
+          taken in head space, before c_proj.
+        - ``"post_proj"``: the legacy behaviour, slicing the residual-space MLP
+          input into head_dim blocks.  Kept only to reproduce artifacts
+          generated before 2026-08-25; it does not decompose by head.
+        """
+        if per_head_boundary not in ("pre_proj", "post_proj"):
+            raise ValueError(
+                f"per_head_boundary は 'pre_proj' か 'post_proj': {per_head_boundary!r}"
+            )
         self.ensure_cached()
         seq_len = int(self.cache_data["seq_len"])
         targets = list(target_token_indices) if target_token_indices is not None else list(range(seq_len))
         table = np.zeros((seq_len, self.num_heads), dtype=np.float64)
         for target_idx in targets:
-            table[target_idx, :] = self.compute_mlp_ig(
-                layer_idx, target_idx, baseline, num_steps
-            ).per_head
+            if per_head_boundary == "pre_proj":
+                table[target_idx, :] = self.compute_mlp_per_head(
+                    layer_idx, target_idx, baseline, num_steps
+                )
+            else:
+                table[target_idx, :] = self.compute_mlp_ig(
+                    layer_idx, target_idx, baseline, num_steps
+                ).per_head
         return table
