@@ -581,27 +581,8 @@
                 overflow: visible;
             }
             #z2z-layout-root.z2z-demo-loading {
-                opacity: 0.42;
+                opacity: 0.55;
                 pointer-events: none;
-                position: relative;
-            }
-            #z2z-layout-root.z2z-demo-loading::after {
-                content: '';
-                position: absolute;
-                top: 42%;
-                left: 50%;
-                width: 36px;
-                height: 36px;
-                margin: -18px 0 0 -18px;
-                border: 3px solid #e2e8f0;
-                border-top-color: #0d9488;
-                border-radius: 50%;
-                animation: z2z-demo-spin 0.75s linear infinite;
-                z-index: 20000;
-                pointer-events: none;
-            }
-            @keyframes z2z-demo-spin {
-                to { transform: rotate(360deg); }
             }
             .demo-load-error {
                 color: #b91c1c;
@@ -1005,7 +986,7 @@
             const useSlotCap = true;
             const isEmbedPage = true;
 
-            const demoMatrix = {"sample_00016":{"layer_ig_zero":{"dataUrl":"demo_data/sample_00016__layer_ig_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Direct LIG (layer z\u2192z)</dd><dt>Baseline</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_zero_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_zero_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>Zero</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_raw_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_raw_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_map_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_map_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-mapRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_zero_base_ratio_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_zero_base_ratio_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-zeroRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"}},"sample_00410":{"layer_ig_zero":{"dataUrl":"demo_data/sample_00410__layer_ig_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Direct LIG (layer z\u2192z)</dd><dt>Baseline</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_zero_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_zero_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>Zero</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_zero_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_zero_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>Zero</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_raw_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_raw_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_raw_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_raw_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_map_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_map_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-mapRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_map_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_map_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-mapRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_zero_base_ratio_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_zero_base_ratio_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-zeroRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_zero_base_ratio_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_zero_base_ratio_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-zeroRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"}}};
+            const demoMatrix = {"sample_00016":{"layer_ig_zero":{"dataUrl":"demo_data/sample_00016__layer_ig_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Direct LIG (layer z\u2192z)</dd><dt>Baseline</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_zero_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_zero_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>Zero</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_zero_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00016__composed_ATT_zero_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>Zero</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_raw_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_raw_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_raw_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_raw_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_map_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_map_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-mapRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_map_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_map_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-mapRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_zero_base_ratio_MLP_zero":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_zero_base_ratio_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-zeroRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_zero_base_ratio_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00016__composed_ATT_ITB_zero_base_ratio_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00016</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-zeroRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">But Congress didn&#x27;t anticipate or intend more public debt, say opponents of the RTC&#x27;s working-capital plan, and Rep. Charles Schumer (D., N.Y.) said the RTC Oversight Board has been remiss in not keeping Congress informed.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"}},"sample_00410":{"layer_ig_zero":{"dataUrl":"demo_data/sample_00410__layer_ig_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Direct LIG (layer z\u2192z)</dd><dt>Baseline</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_zero_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_zero_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>Zero</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_zero_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_zero_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>Zero</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_raw_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_raw_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_raw_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_raw_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_map_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_map_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-mapRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_map_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_map_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-mapRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_zero_base_ratio_MLP_zero":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_zero_base_ratio_MLP_zero.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-zeroRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>Zero</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"},"composed_ATT_ITB_zero_base_ratio_MLP_ATTITBa0":{"dataUrl":"demo_data/sample_00410__composed_ATT_ITB_zero_base_ratio_MLP_ATTITBa0.json","descriptionHtml":"<p class=\"demo-lead\"><strong>Within-layer token contributions (z\u2192z)</strong></p><dl class=\"demo-meta\"><dt>Sample</dt><dd>00410</dd><dt>Route</dt><dd>Composed (z\u2192u \u00d7 u\u2192z)</dd><dt>ATT baseline (z\u2192u)</dt><dd>ITB-zeroRatio</dd><dt>MLP baseline (u\u2192z)</dt><dd>ATTITBa=0</dd></dl><p class=\"demo-sentence-label\">Input sentence</p><blockquote class=\"demo-sentence\">The firm&#x27;s drop in net reflected weaker revenue in transactions for its own account \u2014 a decline of 19% to $314.6 million on reduced revenue from trading fixed-income securities.</blockquote><div class=\"demo-legend\"><p class=\"demo-legend-title\"><strong>How to read</strong></p><p class=\"demo-legend-intro\">Within-layer token-to-token contributions on the layer-direct <em>z</em>\u2192<em>z</em> map (token vectors <em>z</em> at layer input \u2014 see the <a href=\"../index.html#notation\">project page notation</a>). Each column is a target token position; circles show <strong>source \u2192 target</strong> contribution in that layer.</p><ul class=\"demo-legend-list\"><li><strong>Left label on each box</strong>: <em>target</em> token (receives the contribution)</li><li><strong>Top / bottom token labels</strong> (horizontal): <em>source</em> token \u2014 circle position shows who contributed</li><li><strong>Vertical axis</strong>: layers 0\u201311 (bottom row = layer 0, top row = layer 11; lower layers are closer to the input)</li><li><strong>Circle size</strong>: contribution from source \u2192 target within the same layer</li><li><strong>Path thickness</strong>: inter-layer contribution paths (toggle with \"Show inter-layer contribution paths\" in Display options)</li><li><strong>Red highlight</strong>: clicked target token</li></ul></div>"}}};
             const demoLoadPromises = new Map();
             let currentSampleId = "sample_00410";
             let currentSourceId = "layer_ig_zero";
@@ -1040,8 +1021,8 @@
             function getCurrentDemo() {
                 return demoMatrix[currentSampleId][currentSourceId];
             }
-            let z2zData = isDemoEntryLoaded(getCurrentDemo()) ? getCurrentDemo().z2zData : null;
-            let tokens = isDemoEntryLoaded(getCurrentDemo()) ? getCurrentDemo().tokens : null;
+            let z2zData = getCurrentDemo().z2zData;
+            let tokens = getCurrentDemo().tokens;
         
             const container = document.getElementById('container');
             function scheduleDeferred(fn, timeoutMs) {
@@ -1063,79 +1044,6 @@
                         pendingArgs = null;
                     }, waitMs);
                 };
-            }
-            let globalTooltipEl = null;
-            let circleTooltipEl = null;
-            let updateSelectedToken = null;
-            let circleTooltipHoverEl = null;
-            let circleSizeChartRendered = false;
-            let vizBuildGeneration = 0;
-            const VIZ_LAYERS_PER_FRAME = 2;
-            let layoutRecalcScheduled = false;
-
-            function ensureVizTooltips() {
-                if (!globalTooltipEl) {
-                    globalTooltipEl = document.createElement('div');
-                    globalTooltipEl.className = 'tooltip';
-                    document.body.appendChild(globalTooltipEl);
-                }
-                if (!circleTooltipEl) {
-                    circleTooltipEl = document.createElement('div');
-                    circleTooltipEl.className = 'tooltip';
-                    circleTooltipEl.style.backgroundColor = 'rgba(128, 128, 128, 0.9)';
-                    circleTooltipEl.style.zIndex = '1000000';
-                    document.body.appendChild(circleTooltipEl);
-                }
-            }
-
-            function bindCircleTooltipDelegation() {
-                if (container.dataset.circleTooltipBound) return;
-                container.dataset.circleTooltipBound = '1';
-                container.addEventListener('mouseover', (e) => {
-                    let circle = e.target.closest('.contribution-circle');
-                    if (!circle) {
-                        const slot = e.target.closest('.contribution-circle-slot');
-                        if (slot) circle = slot.querySelector('.contribution-circle');
-                    }
-                    if (!circle || !container.contains(circle)) return;
-                    if (circle === circleTooltipHoverEl) return;
-                    circleTooltipHoverEl = circle;
-                    const idx = parseInt(circle.dataset.contributionTokenIdx, 10);
-                    const pct = circle.dataset.contributionPct || '';
-                    circleTooltipEl.textContent = `Token ${idx}: ${tokenLabelAt(idx)} (${pct}%)`;
-                    const rect = circle.getBoundingClientRect();
-                    circleTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
-                    circleTooltipEl.style.top = (rect.top - 5) + 'px';
-                    circleTooltipEl.style.transform = 'translate(-50%, -100%)';
-                    circleTooltipEl.style.display = 'block';
-                });
-                container.addEventListener('mouseout', (e) => {
-                    const related = e.relatedTarget;
-                    if (related && (related.closest('.contribution-circle-slot') || related.closest('.contribution-circle'))) return;
-                    circleTooltipHoverEl = null;
-                    circleTooltipEl.style.display = 'none';
-                });
-                container.addEventListener('mousemove', (e) => {
-                    if (!circleTooltipHoverEl || circleTooltipEl.style.display === 'none') return;
-                    const rect = circleTooltipHoverEl.getBoundingClientRect();
-                    circleTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
-                    circleTooltipEl.style.top = (rect.top - 5) + 'px';
-                });
-            }
-
-            function scheduleRecalcLayoutMetrics() {
-                if (layoutRecalcScheduled) return;
-                layoutRecalcScheduled = true;
-                requestAnimationFrame(() => {
-                    layoutRecalcScheduled = false;
-                    recalcLayoutMetrics();
-                });
-            }
-
-            function ensureCircleSizeCurveChart() {
-                if (circleSizeChartRendered) return;
-                circleSizeChartRendered = true;
-                renderCircleSizeCurveChart();
             }
             const pathSvg = document.getElementById('pathSvg');
             const vizScrollEl = document.getElementById('z2zVizScroll');
@@ -1703,7 +1611,6 @@
                 }
                 const svg = document.getElementById('circleSizeCurveSvg');
                 if (!svg) return;
-                circleSizeChartRendered = true;
                 const plot = getCurvePlotRect();
                 const minD = circleSizeMinPx;
                 const maxD = getCircleMaxDiameterPx();
@@ -2049,9 +1956,6 @@
                         if (expanded) body.removeAttribute('inert');
                         else body.setAttribute('inert', '');
                     }
-                    if (expanded) {
-                        requestAnimationFrame(() => ensureCircleSizeCurveChart());
-                    }
                 };
                 toggle.addEventListener('click', () => {
                     setExpanded(panel.classList.contains('is-collapsed'));
@@ -2082,9 +1986,7 @@
                 const resetDisplayBtn = document.getElementById('resetDisplayOptionsBtn');
                 if (resetDisplayBtn) resetDisplayBtn.addEventListener('click', resetDisplayOptions);
                 bindCircleSizeCurveChart();
-                if (!document.getElementById('displayOptionsPanel')?.classList.contains('is-collapsed')) {
-                    ensureCircleSizeCurveChart();
-                }
+                scheduleDeferred(() => renderCircleSizeCurveChart(), 800);
             }
 
             function getSequenceLength() {
@@ -2276,7 +2178,26 @@
                         value: circleValue,
                         size: parseFloat(circle.style.width) || mapShareToDiameter(parseFloat(circle.dataset.shareRatio || '0')),
                     };
-                    circle.dataset.contributionPct = contributionPercent + '%';
+
+                    circle.addEventListener('mouseenter', function(e) {
+                        e.stopPropagation();
+                        circleTooltip.textContent = `Token ${circleIdx}: ${tokenLabelAt(circleIdx)} (${contributionPercent}%)`;
+                        const rect = this.getBoundingClientRect();
+                        circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                        circleTooltip.style.top = (rect.top - 5) + 'px';
+                        circleTooltip.style.transform = 'translate(-50%, -100%)';
+                        circleTooltip.style.display = 'block';
+                    }, true);
+                    circle.addEventListener('mouseleave', function(e) {
+                        e.stopPropagation();
+                        circleTooltip.style.display = 'none';
+                    }, true);
+                    circle.addEventListener('mousemove', function(e) {
+                        e.stopPropagation();
+                        const rect = this.getBoundingClientRect();
+                        circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                        circleTooltip.style.top = (rect.top - 5) + 'px';
+                    }, true);
                 });
             }
 
@@ -2471,18 +2392,17 @@
             function rebuildVisualizationLayout() {
                 recalcLayoutMetrics();
                 clearVisualization();
-                buildVisualization(() => {
-                    updateTokenAxisLabels();
-                    setTimeout(() => {
-                        if (selectedToken !== null) {
-                            updateSelectedToken(selectedToken);
-                            updateDuplicateAxisLabels();
-                        }
-                        updateCirclePositionsAndDrawPaths();
-                        syncContainerHeight();
-                        syncVizScrollCenter();
-                    }, 100);
-                });
+                buildVisualization();
+                updateTokenAxisLabels();
+                setTimeout(() => {
+                    if (selectedToken !== null) {
+                        updateSelectedToken(selectedToken);
+                        updateDuplicateAxisLabels();
+                    }
+                    updateCirclePositionsAndDrawPaths();
+                    syncContainerHeight();
+                    syncVizScrollCenter();
+                }, 100);
             }
 
             function recalcLayoutMetrics() {
@@ -2578,12 +2498,20 @@
                 updateTokenAxisLabels();
             });
             
-            function buildVisualization(onComplete) {
-            ensureVizTooltips();
-            bindCircleTooltipDelegation();
+            function buildVisualization() {
+            // グローバルツールチップを作成（長方形用と円用の2つ）
+            const globalTooltip = document.createElement('div');
+            globalTooltip.className = 'tooltip';
+            document.body.appendChild(globalTooltip);
             
-            // 選択状態を管理する関数（初回のみ定義）
-            if (!updateSelectedToken) updateSelectedToken = function(tokenIdx) {
+            const circleTooltip = document.createElement('div');
+            circleTooltip.className = 'tooltip';
+            circleTooltip.style.backgroundColor = 'rgba(128, 128, 128, 0.9)'; // 灰色
+            circleTooltip.style.zIndex = '1000000'; // 長方形のツールチップより上
+            document.body.appendChild(circleTooltip);
+            
+            // 選択状態を管理する関数
+            function updateSelectedToken(tokenIdx) {
                 const willDeselect = selectedToken === tokenIdx;
                 const hadDuplicate = !!document.querySelector('.duplicate-overall-container');
 
@@ -2810,23 +2738,23 @@
                                 duplicateContributionBox.addEventListener('mouseenter', function() {
                                     const layerIdx = parseInt(this.dataset.layerIdx, 10);
                                     const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
-                                    globalTooltipEl.textContent = `Layer ${layerIdx}, Target token ${colTokenIdx}: ${tokenLabelAt(colTokenIdx)}`;
+                                    globalTooltip.textContent = `Layer ${layerIdx}, Target token ${colTokenIdx}: ${tokenLabelAt(colTokenIdx)}`;
                                     const rect = this.getBoundingClientRect();
-                                    globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
-                                    globalTooltipEl.style.top = (rect.top - 5) + 'px';
-                                    globalTooltipEl.style.transform = 'translate(-50%, -100%)';
-                                    globalTooltipEl.style.display = 'block';
+                                    globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                                    globalTooltip.style.top = (rect.top - 5) + 'px';
+                                    globalTooltip.style.transform = 'translate(-50%, -100%)';
+                                    globalTooltip.style.display = 'block';
                                     applyBoxHoverHighlight(colTokenIdx, this);
                                 });
                                 duplicateContributionBox.addEventListener('mouseleave', function() {
-                                    globalTooltipEl.style.display = 'none';
+                                    globalTooltip.style.display = 'none';
                                     const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
                                     clearBoxHoverHighlight(colTokenIdx, this);
                                 });
                                 duplicateContributionBox.addEventListener('mousemove', function() {
                                     const rect = this.getBoundingClientRect();
-                                    globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
-                                    globalTooltipEl.style.top = (rect.top - 5) + 'px';
+                                    globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                                    globalTooltip.style.top = (rect.top - 5) + 'px';
                                 });
                                 
                                 // duplicateContributionBoxはアニメーション後に追加されるため、ここでは追加しない
@@ -2895,17 +2823,10 @@
                     return;
                 }
                 applySelectionChange();
-            };
+            }
             
-            vizBuildGeneration += 1;
-            const buildToken = vizBuildGeneration;
-            let nextLayer = 0;
-
-            function buildLayerChunk() {
-                if (buildToken !== vizBuildGeneration) return;
-                const chunk = document.createDocumentFragment();
-                const endLayer = Math.min(nextLayer + VIZ_LAYERS_PER_FRAME, numLayersToShow);
-                for (let layer = nextLayer; layer < endLayer; layer++) {
+            // 各Layerについて表示
+            for (let layer = 0; layer < numLayersToShow; layer++) {
                 const layerTop = getLayerTop(layer);
 
                 const layerLabel = document.createElement('div');
@@ -2920,7 +2841,7 @@
                     e.stopPropagation();
                     applyLayerFocus(layer);
                 });
-                chunk.appendChild(layerLabel);
+                container.appendChild(layerLabel);
                 
                 // 各Tokenについて貢献度を表示
                 for (let tokenIdx = 0; tokenIdx < numTokensToShow; tokenIdx++) {
@@ -3002,24 +2923,24 @@
                     contributionBox.addEventListener('mouseenter', function() {
                         const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
                         const layerIdx = parseInt(this.dataset.layerIdx, 10);
-                        globalTooltipEl.textContent = `Layer ${layerIdx}, Target token ${colTokenIdx}: ${tokenLabelAt(colTokenIdx)}`;
+                        globalTooltip.textContent = `Layer ${layerIdx}, Target token ${colTokenIdx}: ${tokenLabelAt(colTokenIdx)}`;
                         const rect = this.getBoundingClientRect();
-                        globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
-                        globalTooltipEl.style.top = (rect.top - 5) + 'px';
-                        globalTooltipEl.style.transform = 'translate(-50%, -100%)';
-                        globalTooltipEl.style.display = 'block';
+                        globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                        globalTooltip.style.top = (rect.top - 5) + 'px';
+                        globalTooltip.style.transform = 'translate(-50%, -100%)';
+                        globalTooltip.style.display = 'block';
                         applyBoxHoverHighlight(colTokenIdx, this);
                     });
                     contributionBox.addEventListener('mouseleave', function() {
-                        globalTooltipEl.style.display = 'none';
+                        globalTooltip.style.display = 'none';
                         const colTokenIdx = parseInt(this.dataset.tokenIdx, 10);
                         clearBoxHoverHighlight(colTokenIdx, this);
                         refreshLayerLabelFromSelection();
                     });
                     contributionBox.addEventListener('mousemove', function() {
                         const rect = this.getBoundingClientRect();
-                        globalTooltipEl.style.left = (rect.left + rect.width / 2) + 'px';
-                        globalTooltipEl.style.top = (rect.top - 5) + 'px';
+                        globalTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                        globalTooltip.style.top = (rect.top - 5) + 'px';
                     });
                     tokenLabel.addEventListener('mouseenter', function(e) {
                         e.stopPropagation();
@@ -3127,7 +3048,10 @@
                                 circle.style.backgroundColor = '#2196F3'; // 通常の青
                             }
                             circle.title = `Token ${idx}: ${tokenLabelAt(idx)}\nValue: ${value.toFixed(4)}`;
+                            
+                            // 円のコンテナにホバーイベントを追加（スロット全体でホバー可能）
                             circleContainer.style.cursor = 'pointer';
+                            circleContainer.title = `Token ${idx}: ${tokenLabelAt(idx)}\nValue: ${value.toFixed(4)}`;
                             
                             // 円の位置を記録（レンダリング後に更新）
                             if (!circlePositions[layer]) {
@@ -3143,8 +3067,45 @@
                                 size: normalizedSize
                             };
                             
+                            // 円のホバーイベント（Token名と貢献度%を表示）
                             const contributionPercent = totalContribution > 0 ? ((Math.abs(value) / totalContribution) * 100).toFixed(2) : '0.00';
-                            circle.dataset.contributionPct = contributionPercent + '%';
+                            
+                            // ホバーイベント関数
+                            const showTooltip = function(rect) {
+                                circleTooltip.textContent = `Token ${idx}: ${tokenLabelAt(idx)} (${contributionPercent}%)`;
+                                circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                                circleTooltip.style.top = (rect.top - 5) + 'px';
+                                circleTooltip.style.transform = 'translate(-50%, -100%)';
+                                circleTooltip.style.display = 'block';
+                            };
+                            
+                            const hideTooltip = function() {
+                                circleTooltip.style.display = 'none';
+                            };
+                            
+                            // 円自体にホバーイベントを追加
+                            circle.addEventListener('mouseenter', function() {
+                                const rect = this.getBoundingClientRect();
+                                showTooltip(rect);
+                            });
+                            circle.addEventListener('mouseleave', hideTooltip);
+                            circle.addEventListener('mousemove', function() {
+                                const rect = this.getBoundingClientRect();
+                                circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                                circleTooltip.style.top = (rect.top - 5) + 'px';
+                            });
+                            
+                            // コンテナにもホバーイベントを追加（スロット全体でホバー可能）
+                            circleContainer.addEventListener('mouseenter', function() {
+                                const rect = this.getBoundingClientRect();
+                                showTooltip(rect);
+                            });
+                            circleContainer.addEventListener('mouseleave', hideTooltip);
+                            circleContainer.addEventListener('mousemove', function() {
+                                const rect = this.getBoundingClientRect();
+                                circleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+                                circleTooltip.style.top = (rect.top - 5) + 'px';
+                            });
                             
                             // 選択されたTokenの円は透過率を下げる（周りより少し高い透過率）
                             if (tokenIdx === selectedToken) {
@@ -3173,18 +3134,9 @@
                 
                     contributionBox.appendChild(bar);
                     wrapper.appendChild(contributionBox);
-                    chunk.appendChild(wrapper);
+                    container.appendChild(wrapper);
                 }
             }
-                container.appendChild(chunk);
-                nextLayer = endLayer;
-                if (nextLayer < numLayersToShow) {
-                    requestAnimationFrame(buildLayerChunk);
-                } else if (typeof onComplete === 'function') {
-                    onComplete();
-                }
-            }
-            buildLayerChunk();
             }
 
             // 円の位置を更新し、Layer間の線を描画する関数
@@ -3659,11 +3611,11 @@
                 if (!duplicateOverallContainer) return;
                 duplicateOverallContainer.classList.add('z2z-dup-entering');
                 setContainerWidthTransition(true);
-                scheduleRecalcLayoutMetrics();
+                recalcLayoutMetrics();
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         duplicateOverallContainer.classList.remove('z2z-dup-entering');
-                        scheduleRecalcLayoutMetrics();
+                        recalcLayoutMetrics();
                         syncContainerHeight();
                         syncVizScrollCenter();
                     });
@@ -4042,13 +3994,11 @@
                     clickedLayer = null;
                     recalcLayoutMetrics();
                     clearVisualization();
-                    buildVisualization(() => {
-                        updateTokenAxisLabels();
-                        requestAnimationFrame(() => {
-                            updateCirclePositionsAndDrawPaths();
-                            syncContainerHeight();
-                            syncVizScrollCenter();
-                        });
+                    buildVisualization();
+                    updateTokenAxisLabels();
+                    requestAnimationFrame(() => {
+                        updateCirclePositionsAndDrawPaths();
+                        syncContainerHeight();
                     });
                 }).catch(() => {
                     const descEl = document.getElementById('visualization-description');
@@ -4095,37 +4045,16 @@
             if (layoutRoot) layoutRoot.addEventListener('click', handleVizBackgroundClick);
 
             function runInitialVisualization() {
-                const vizRoot = document.getElementById('z2z-layout-root');
-                if (vizRoot) vizRoot.classList.add('z2z-demo-loading');
-                const boot = () => {
-                    recalcLayoutMetrics();
-                    buildVisualization(() => {
-                        updateTokenAxisLabels();
-                        requestAnimationFrame(() => {
-                            updateCirclePositionsAndDrawPaths();
-                            syncContainerHeight();
-                            syncVizScrollCenter();
-                            if (vizRoot) vizRoot.classList.remove('z2z-demo-loading');
-                        });
-                    });
-                };
-                if (typeof ensureDemoLoaded === 'function' && (!z2zData || !tokens)) {
-                    ensureDemoLoaded(currentSampleId, currentSourceId).then(demo => {
-                        if (!demo) {
-                            if (vizRoot) vizRoot.classList.remove('z2z-demo-loading');
-                            return;
-                        }
-                        z2zData = demo.z2zData;
-                        tokens = demo.tokens;
-                        boot();
-                    }).catch(() => {
-                        if (vizRoot) vizRoot.classList.remove('z2z-demo-loading');
-                    });
-                } else {
-                    scheduleDeferred(boot, 200);
-                }
+                recalcLayoutMetrics();
+                buildVisualization();
+                updateTokenAxisLabels();
+                requestAnimationFrame(() => {
+                    updateCirclePositionsAndDrawPaths();
+                    syncContainerHeight();
+                    syncVizScrollCenter();
+                });
             }
-            runInitialVisualization();
+            scheduleDeferred(runInitialVisualization, 200);
 
             (function initEmbedBridge() {
                 const queryEmbed = new URLSearchParams(window.location.search).get('embed') === '1';

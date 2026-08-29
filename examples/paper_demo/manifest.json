@@ -55,8 +55,8 @@
       "mlp_baseline": "zero",
       "att_label": "Zero",
       "mlp_label": "Zero",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_zero_MLP_zero",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_zero_MLP_zero__allfix",
       "baseline": "zero",
       "publish": true
     },
@@ -69,8 +69,8 @@
       "mlp_baseline": "attitba0",
       "att_label": "Zero",
       "mlp_label": "ATTITBa=0",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_zero_MLP_ATTITBa0",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_zero_MLP_ATTITBa0__allfix",
       "baseline": "zero",
       "publish": true
     },
@@ -83,8 +83,8 @@
       "mlp_baseline": "zero",
       "att_label": "ITB",
       "mlp_label": "Zero",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_raw_MLP_zero",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_raw_MLP_zero__allfix",
       "baseline": "self_input_token",
       "publish": true
     },
@@ -97,8 +97,8 @@
       "mlp_baseline": "attitba0",
       "att_label": "ITB",
       "mlp_label": "ATTITBa=0",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_raw_MLP_ATTITBa0",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_raw_MLP_ATTITBa0__allfix",
       "baseline": "self_input_token",
       "publish": true
     },
@@ -111,8 +111,8 @@
       "mlp_baseline": "zero",
       "att_label": "ITB-mapRatio",
       "mlp_label": "Zero",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_map_MLP_zero",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_map_MLP_zero__allfix",
       "baseline": "itb_map_ratio",
       "publish": true
     },
@@ -125,8 +125,8 @@
       "mlp_baseline": "attitba0",
       "att_label": "ITB-mapRatio",
       "mlp_label": "ATTITBa=0",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_map_MLP_ATTITBa0",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_map_MLP_ATTITBa0__allfix",
       "baseline": "itb_map_ratio",
       "publish": true
     },
@@ -139,8 +139,8 @@
       "mlp_baseline": "zero",
       "att_label": "ITB-zeroRatio",
       "mlp_label": "Zero",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_zero_base_ratio_MLP_zero",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_zero_base_ratio_MLP_zero__allfix",
       "baseline": "itb_zero_ratio",
       "publish": true
     },
@@ -153,8 +153,8 @@
       "mlp_baseline": "attitba0",
       "att_label": "ITB-zeroRatio",
       "mlp_label": "ATTITBa=0",
-      "cache_parent": "samples/dev/z2z/composed",
-      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_zero_base_ratio_MLP_ATTITBa0",
+      "cache_parent": "samples/dev/z2z/composed_affine",
+      "cache_subdir": "steps32_bert-base-uncased_maxlen128_z_to_z_ATT_ITB_zero_base_ratio_MLP_ATTITBa0__allfix",
       "baseline": "itb_zero_ratio",
       "publish": true
     }
