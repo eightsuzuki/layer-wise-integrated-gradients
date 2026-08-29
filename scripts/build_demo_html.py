@@ -178,10 +178,16 @@ def _load_demo_matrix(
             source_id = source["id"]
             description_html = description_unified(entry, source)
             data_url = _export_demo_data_chunk(out_dir, sample_id, source_id, z2z_data, tokens)
-            demo_matrix[sample_id][source_id] = {
+            entry_payload = {
                 "data_url": data_url,
                 "description_html": description_html,
             }
+            # 初期表示のエントリだけは inline データが必須（render_z2z_multi_html は
+            # first["z2z_data"] / first["tokens"] を読む）。他エントリは lazy のまま。
+            if sample_id == default_sample_id and source_id == initial_source_id:
+                entry_payload["z2z_data"] = z2z_data
+                entry_payload["tokens"] = tokens
+            demo_matrix[sample_id][source_id] = entry_payload
     return demo_matrix, sample_labels, default_sample_id
 
 
