@@ -37,6 +37,7 @@ class AttentionModel(nn.Module):
         target_token_idx: int,
         target_head_idx: Optional[int] = None,
         debug: bool = False,
+        input_is_layer_hidden: bool = True,
     ):
         super().__init__()
         self.bert_model = bert_model
@@ -44,6 +45,12 @@ class AttentionModel(nn.Module):
         self.target_token_idx = target_token_idx
         self.target_head_idx = target_head_idx
         self.debug = debug
+        # 渡される input_embeddings が層 layer_idx の入力 z^(l) であることを前提に、
+        # 層 layer_idx の attention だけを適用する（本文 Eq.(ig-att)）。
+        # False にすると 2026-08-25 以前の挙動 — z^(l) に位置埋め込みを足し直し、
+        # embeddings の LayerNorm を通し、層 0..l-1 を再通過してから層 l の attention を
+        # 取る — に戻る。旧成果物の再現用にのみ使う。
+        self.input_is_layer_hidden = input_is_layer_hidden
 
         # デバイス設定
         self.device = ensure_model_on_device(bert_model)
@@ -117,11 +124,11 @@ class AttentionModel(nn.Module):
         Returns:
             torch.Tensor: u_i'^{(l,h)}のL2ノルム（スカラー）
         """
-        # ベクトル出力を取得してノルムを計算
+        # ベクトル出力を取得してノルムを計算（バッチ＝IG ステップごと）
         output_vector = self._compute_attention_output_vector(
             input_embeddings, attention_mask, token_type_ids
         )
-        return torch.norm(output_vector)
+        return torch.norm(output_vector, dim=-1)
 
     def _compute_attention_output_vector(
         self,
@@ -162,14 +169,19 @@ class AttentionModel(nn.Module):
         if attention_mask.dtype != torch.float32:
             attention_mask = attention_mask.float()
 
-        # 位置エンコーディングとトークンタイプ埋め込みを追加
-        embeddings = self._add_positional_embeddings(
-            input_embeddings, token_type_ids, embeddings_layer
-        )
+        if self.input_is_layer_hidden:
+            # input_embeddings は既に層 layer_idx の入力 z^(l)。位置情報も下位層の計算も
+            # 済んでいるので、足し直しも通し直しもしない。
+            hidden_states = input_embeddings
+            layer_range = [self.layer_idx]
+        else:
+            # 2026-08-25 以前の挙動（旧成果物の再現用）
+            hidden_states = self._add_positional_embeddings(
+                input_embeddings, token_type_ids, embeddings_layer
+            )
+            layer_range = list(range(self.layer_idx + 1))
 
-        # 指定された層まで順次計算
-        hidden_states = embeddings
-        for layer_idx in range(self.layer_idx + 1):
+        for layer_idx in layer_range:
             layer = encoder_layers[layer_idx]
 
             if layer_idx == self.layer_idx:
@@ -271,13 +283,16 @@ class AttentionModel(nn.Module):
                 batch_size, seq_len, self.num_heads, self.head_dim
             )
 
-            # 対象ヘッドの対象トークンの出力
+            # 対象ヘッドの対象トークンの出力。バッチ次元は残す:
+            # Captum は IG の補間ステップをバッチとして一度に渡すので、
+            # ここで [0] を取ると経路上の 1 点しか見ないことになり、
+            # 他のステップに対する勾配が恒等的に 0 になる。
             target_output = attention_output[
-                0, self.target_token_idx, self.target_head_idx, :
+                :, self.target_token_idx, self.target_head_idx, :
             ]
         else:
             # 全ヘッドの出力（対象トークンの全次元）
-            target_output = attention_output[0, self.target_token_idx, :]
+            target_output = attention_output[:, self.target_token_idx, :]
 
         return target_output
 

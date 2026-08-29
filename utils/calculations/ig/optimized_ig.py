@@ -169,10 +169,21 @@ class OptimizedIGCalculator:
             precision_context: torch.cuda.amp.autocast context manager
         """
         self.precision_context = precision_context
-        # executorにも伝播
-        self.attention_executor.set_precision_context(precision_context)
-        self.mlp_executor.set_precision_context(precision_context)
-        logger.info("Precision context set for IG calculations and executors")
+        # executor 側は FP32 固定に整理された際に set_precision_context を落としている
+        # （executors.py の _BaseExecutor 参照）。ここが無条件に呼び続けていたため
+        # compute_global_ig_analysis が AttributeError で落ちていた。
+        # 帰属の数値に影響する変更ではないので、対応している executor にだけ伝播する。
+        propagated = 0
+        for executor in (self.attention_executor, self.mlp_executor):
+            setter = getattr(executor, "set_precision_context", None)
+            if callable(setter):
+                setter(precision_context)
+                propagated += 1
+        logger.info(
+            "Precision context set for IG calculations (%d/2 executors accept it; "
+            "executors are FP32-only by design)",
+            propagated,
+        )
 
     # ------------------------------------------------------------------ #
     # Utility helpers

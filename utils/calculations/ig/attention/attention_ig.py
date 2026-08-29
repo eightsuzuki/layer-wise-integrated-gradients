@@ -387,6 +387,7 @@ def compute_attention_ig_global_analysis_multi_layer(
     baseline_method: str = "zero",
     input_type: str = "z",  # "z": 入力埋め込み, "v": Valueベクトル
     use_direct_computation: bool = True,  # 直接計算を使用するか（input_type="v"の場合）
+    input_is_layer_hidden: bool = True,
 ) -> Dict[int, Dict]:
     """
     複数レイヤーのAttention IG計算を一度に実行（最適化版）
@@ -442,6 +443,7 @@ def compute_attention_ig_global_analysis_multi_layer(
                 baseline_method=baseline_method,
                 input_type=input_type,
                 use_direct_computation=use_direct_computation,
+                input_is_layer_hidden=input_is_layer_hidden,
             )
         )
 
@@ -479,6 +481,7 @@ def _compute_attention_all_tokens_ig_vectorized_multi_layer_multi_token(
     baseline_method: str = "zero",
     input_type: str = "z",  # "z": 入力埋め込み, "v": Valueベクトル
     use_direct_computation: bool = True,  # 直接計算を使用するか（input_type="v"の場合）
+    input_is_layer_hidden: bool = True,
 ) -> Dict[int, Dict[int, List[float]]]:
     """
     複数レイヤー×複数トークンのAttention IG値を一度に計算（Captum版）
@@ -676,6 +679,7 @@ def _compute_attention_all_tokens_ig_vectorized_multi_layer_multi_token(
                 baseline_method=baseline_method,
                 input_type=input_type,
                 use_direct_computation=use_direct_computation,
+                input_is_layer_hidden=input_is_layer_hidden,
             )
 
             layer_time = time.time() - layer_start_time
@@ -837,6 +841,7 @@ def _compute_batch_ig_for_same_layer_head(
     baseline_method: str = "zero",
     input_type: str = "z",  # "z": 入力埋め込み, "v": Valueベクトル
     use_direct_computation: bool = True,  # 直接計算を使用するか（input_type="v"の場合）
+    input_is_layer_hidden: bool = True,
 ) -> Dict[int, List[float]]:
     """
     同じレイヤー・同じヘッドの複数トークンに対してバッチIG計算を実行
@@ -954,6 +959,7 @@ def _compute_batch_ig_for_same_layer_head(
             self.attention_mask = attention_mask
             self.token_type_ids = token_type_ids
             self.input_type = input_type
+            self.input_is_layer_hidden = input_is_layer_hidden
 
             # デバッグ用: forward呼び出し回数と出力を記録
             self._forward_call_count = 0
@@ -1026,9 +1032,17 @@ def _compute_batch_ig_for_same_layer_head(
                     baseline_embeddings_with_pos
                 )
 
-                # 指定された層まで順次計算
-                baseline_hidden_states = baseline_embeddings_with_pos
-                for bl_layer_idx in range(layer_idx + 1):
+                # 対象層の入力に相当するベースライン表現。input_is_layer_hidden なら
+                # baseline_emb は既に層 layer_idx の入力なので、位置埋め込みを足した
+                # baseline_embeddings_with_pos ではなく baseline_emb をそのまま使い、
+                # 下位層も通さない。
+                if input_is_layer_hidden:
+                    baseline_hidden_states = baseline_emb
+                    bl_layer_range = [layer_idx]
+                else:
+                    baseline_hidden_states = baseline_embeddings_with_pos
+                    bl_layer_range = list(range(layer_idx + 1))
+                for bl_layer_idx in bl_layer_range:
                     bl_layer = encoder_layers[bl_layer_idx]
 
                     if bl_layer_idx == layer_idx:
@@ -1150,23 +1164,30 @@ def _compute_batch_ig_for_same_layer_head(
                     attention_mask=attention_mask,
                     output_attentions=True,
                 )
+            elif self.input_is_layer_hidden:
+                # input_embeddings は層 self.layer_idx の入力 z^(l)。位置情報も下位層の
+                # 計算も済んでいるので、足し直しも通し直しもせず、その層の attention
+                # だけを適用する（本文 Eq.(ig-att) の ATT^(l)）。
+                attention_output = encoder_layers[self.layer_idx].attention.self(
+                    input_embeddings,
+                    attention_mask=attention_mask,
+                    output_attentions=True,
+                )
             else:
-                # input_type="z"の場合、通常通り処理
+                # 2026-08-25 以前の挙動（旧成果物の再現用）:
+                # z^(l) に位置埋め込みを足し直し、embeddings の LayerNorm を通し、
+                # 層 0..l-1 を再通過してから層 l の attention を取る。
                 embeddings = (
                     input_embeddings + position_embeddings + token_type_embeddings
                 )
                 embeddings = embeddings_layer.LayerNorm(embeddings)
                 embeddings = embeddings_layer.dropout(embeddings)
 
-                # 指定された層まで順次計算
-                # 注意: CaptumのIG計算では、各ステップ（補間パラメータa=0, 1/32, 2/32, ..., 1）で異なるinput_embeddingsが使われる
-                # そのため、下位層の計算結果はキャッシュできない（入力が異なるため）
                 hidden_states = embeddings
                 for layer_idx in range(self.layer_idx + 1):
                     layer = encoder_layers[layer_idx]
 
                     if layer_idx == self.layer_idx:
-                        # 対象層のAttention出力を取得（全トークン分）
                         attention_output = layer.attention.self(
                             hidden_states,
                             attention_mask=attention_mask,
@@ -1174,8 +1195,6 @@ def _compute_batch_ig_for_same_layer_head(
                         )
                         break
                     else:
-                        # 他の層は通常通り計算
-                        # 注意: 各IGステップで異なるhidden_statesが使われるため、キャッシュできない
                         layer_output = layer(
                             hidden_states, attention_mask=attention_mask
                         )
@@ -1208,7 +1227,8 @@ def _compute_batch_ig_for_same_layer_head(
 
                 # 理論式通り: ||u_i'^{(l,h)}(a) - u_i'^{(l,h)}(0)||_2 を計算
                 diff_vector = target_output - baseline_vec
-                loss = torch.norm(diff_vector)
+                # ステップごとにノルムを取る（バッチ次元 = IG の補間ステップ）
+                loss = torch.norm(diff_vector, dim=-1)
                 outputs.append(loss)
 
             # [num_tokens]のテンソルとして返す（Captumが複数出力を正しく処理するため）
@@ -1281,10 +1301,13 @@ def _compute_batch_ig_for_same_layer_head(
 
     # baseline_method="self_input_token"の場合、各トークンに対して個別にベースラインを計算する必要があるため、個別計算を使用
     # トークン数が3以下の場合も個別計算を使用（バッチ処理のオーバーヘッドを避ける）
-    if (
-        baseline_method == "self_input_token"
-        or len(target_token_indices) <= 3
-    ):
+    # 常に個別計算を使う。
+    # バッチ経路は「Captum が出力ごとに IG を返す」ことを前提にしているが、
+    # Captum は target を与えない多出力 forward を扱えず、実際には形状が合わずに
+    # 例外 → 個別計算へのフォールバックになっていた（＝結果は同じで時間だけ余分）。
+    # 本文 Eq.(ig-att) は対象トークン j ごとに独立な IG を定義しているので、
+    # 個別計算が定義どおりでもある。
+    if True:
         # 個別計算にフォールバック
         if baseline_method == "self_input_token":
             logger.debug(
@@ -1501,18 +1524,12 @@ def _compute_batch_ig_for_same_layer_head(
                 seq_len = attributions.shape[1]
                 results = {}
                 for i, token_idx in enumerate(target_token_indices):
-                    ig_values = []
-                    for pos_idx in range(seq_len):
-                        # baseline_method="self_input_token"の場合、自己トークンの寄与度を0に設定（理論的には0になるべき）
-                        if (
-                            baseline_method == "self_input_token"
-                            and pos_idx == token_idx
-                        ):
-                            pos_ig = 0.0
-                        else:
-                            # 各トークン位置の埋め込みのノルムをIG値とする
-                            pos_ig = torch.norm(attributions[i, pos_idx, :]).item()
-                        ig_values.append(pos_ig)
+                    # 次元方向は和（本文 Eq.(ig-att)）。ノルムだと符号が消え、
+                    # 完全性 sum_i IG = g(1) - g(0) も成り立たない。
+                    ig_values = [
+                        float(attributions[i, pos_idx, :].sum().item())
+                        for pos_idx in range(seq_len)
+                    ]
                     results[token_idx] = ig_values
             elif attributions.shape[0] == 1:
                 # 単一出力の場合: [1, seq_len, hidden_size] - Captumの制約により複数出力が合計/平均されている
@@ -1956,7 +1973,8 @@ def _compute_single_token_ig(
                 self.baseline_vector = self.baseline_vector.to(u_actual_vector.device)
             # ベースラインは既にfloat32で保存されている
             diff_vector = u_actual_vector - self.baseline_vector
-            loss = torch.norm(diff_vector)
+            # ステップごとにノルムを取る（バッチ次元 = IG の補間ステップ）
+            loss = torch.norm(diff_vector, dim=-1)
             return loss.unsqueeze(0) if loss.dim() == 0 else loss
 
     # Phase 1.2: torch.compileを有効化（環境変数で制御可能）
@@ -1998,15 +2016,13 @@ def _compute_single_token_ig(
     if attributions is None or not isinstance(attributions, torch.Tensor):
         raise ValueError("Invalid attributions")
 
+    # 本文 Eq.(ig-att): IG_{i,j,h} = sum_d (z_id - z_id(0)) * int dA/dz_id da
+    # 次元方向は「和」であり、ノルムではない。ノルムだと符号が消え、完全性
+    # sum_i IG = g(1) - g(0) も成り立たなくなる。
+    # self_input_token ベースラインでは自己トークンの変位が 0 なので、その寄与は
+    # 和を取れば自動的に 0 になる（ゼロ埋めの回避策は不要）。
     seq_len = attributions.shape[1]
-    ig_values = []
-    for pos_idx in range(seq_len):
-        # baseline_method="self_input_token"の場合、自己トークンの寄与度を0に設定（理論的には0になるべき）
-        if baseline_method == "self_input_token" and pos_idx == target_token_idx:
-            pos_ig = 0.0
-        else:
-            pos_ig = torch.norm(attributions[0, pos_idx, :]).item()
-        ig_values.append(pos_ig)
+    ig_values = [float(attributions[0, pos_idx, :].sum().item()) for pos_idx in range(seq_len)]
 
     return ig_values
     # メモリ管理はPyTorchの自動管理に任せる（明示的なdel/empty_cacheは不要）
