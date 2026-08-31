@@ -27,30 +27,68 @@ export MONOREPO_ROOT=/path/to/bert_token_embedding_visualization   # for prepare
 If you already have caches (e.g. from the development monorepo):
 
 ```bash
-export PTB_CACHE_ROOT=/home/data/eight/bert_token_embedding_visualization/cache/ptb_ig_analysis
+export PTB_CACHE_ROOT=/path/to/your/cache/ptb_ig_analysis
 
 python scripts/reproduce/compare_layer_vs_composed.py --start 410 --end 410
 ```
 
-## Full Experiment A (PTB dev, samples 0–1699)
+## Full Experiment A (PTB dev, samples 0-1699)
 
 ```bash
-# 1) ATT + MLP caches (requires monorepo batch runners + PTB)
-bash scripts/reproduce/prepare_att_mlp.sh --split dev --end 1699
+# 1) ATT + MLP caches.
+#    The MLP side runs from this repo; the ATT side still delegates to the
+#    monorepo runner (--skip-att if you already have those caches).
+#    --device auto picks the CUDA card with the most free memory, which matters
+#    on a shared machine; --device cuda:N pins one.
+bash scripts/reproduce/prepare_att_mlp.sh --split dev --end 1699 --device auto
 
-# 2) Layer-direct z2z (zero / ITB / ITB-zeroRatio baselines — run per baseline)
-python scripts/reproduce/run_layer_direct_ig.py --split dev --start_sample 0 --end_sample 1699 --baseline_method zero
+# 2) Layer-direct z2z (the reference side; run once per baseline)
+python scripts/reproduce/run_layer_direct_ig.py --split dev \
+    --start-sample 0 --end-sample 1699 --baseline-method zero --device auto
+python scripts/reproduce/run_layer_direct_ig.py --split dev \
+    --start-sample 0 --end-sample 1699 --baseline-method self_input_token --device auto
 
-# 3) Composed z2z
+# 3) Composed z2z (affine composition, Eq. layer-decomp-hat)
 python scripts/reproduce/compose_z2z.py --split dev --start 0 --end 1699
 
 # 4) L2 comparison
 python scripts/reproduce/compare_layer_vs_composed.py --split dev --start 0 --end 1699 \
-  --csv-out results/summary_layer_vs_composed.csv
+    --csv-out results/summary_layer_vs_composed.csv
 
 # 5) Top-3 per reference group (tab_decomp_top)
 python scripts/reproduce/export_decomp_table.py results/summary_layer_vs_composed.csv \
-  --out results/decomp_top3_by_group.csv
+    --out results/decomp_top3_by_group.csv
+```
+
+### What has to match for the numbers to come out right
+
+Three settings decide whether step 4 reproduces the published table. All three
+are the defaults, but they are easy to change by accident:
+
+| Setting | Paper | Why |
+|---|---|---|
+| Composition | `--mode affine` | Eq. layer-decomp-hat chains **unit-sum allocations**, normalizing each boundary column by its own IG total. `--mode prod` chains raw scores and is dominated by columns with a large total. |
+| MLP cache | `--mlp-suffix __headspacefix` | Attribution must be taken with respect to `u^{(l,h)}`, before `W_o`. Slicing the post-projection residual into `head_dim` blocks does not give heads. |
+| ATT steps | 256 | The z->u boundary does not satisfy completeness at 32 steps. The MLP boundary does, so it stays at 32. |
+
+The comparison in step 4 also aligns the two sides before measuring: the
+layer-direct cache is in subword space and the composed cache is in word space,
+so subword rows and columns are summed into words first. Columns that are
+identically zero on either side are skipped rather than scored against the zero
+vector -- such a column means the attribution for that output token was never
+produced, and averaging it in would mix a missing measurement into the result.
+
+### Sharing a GPU
+
+Every step takes `--device`. `auto` (the default) picks the CUDA card with the
+most free memory and drops to CPU rather than squeezing onto a card that is
+nearly full; `cuda:N` pins one. To use several cards, run disjoint shards --
+each skips sentences already written, so runs resume after an interrupt:
+
+```bash
+python scripts/reproduce/run_mlp_head_space_ig.py --start 0   --end 849  --device cuda:0 &
+python scripts/reproduce/run_mlp_head_space_ig.py --start 850 --end 1699 --device cuda:1 &
+wait
 ```
 
 ## Visualization (no LDC license required)

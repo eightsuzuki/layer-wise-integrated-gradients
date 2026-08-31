@@ -48,7 +48,7 @@ class TestLayerContributionTheory(unittest.TestCase):
     
     def test_z2z_computation_formula(self):
         """理論式の検証: IG_Layer[i, i'] = Σ_h IG_ATT[i, i', h] * IG_MLP[h, i']"""
-        z2z_results = compute_z2z_from_att_mlp(self.attns, self.mlp)
+        z2z_results = compute_z2z_from_att_mlp(self.attns, self.mlp, mode="prod")
         
         attns_array = np.array(self.attns)
         mlp_array = np.array(self.mlp)
@@ -79,6 +79,50 @@ class TestLayerContributionTheory(unittest.TestCase):
                 err_msg=f"Layer {layer_idx} の計算結果が理論式と一致しません"
             )
     
+    def test_z2z_affine_matches_paper_formula(self):
+        """affine（既定, 論文 Eq. layer-decomp-hat）: 列を総和で正規化してから積を取る。
+
+        prod との違いは規約の違いではなく別の推定量である。既定を取り違えると
+        論文の表は再現しないので、両方を固定しておく。
+        """
+        from utils.calculations.ig.z2z.compose_att_mlp import (
+            normalize_ig_column_to_affine as nrm,
+        )
+
+        z2z_results = compute_z2z_from_att_mlp(self.attns, self.mlp)  # 既定 = affine
+        attns_array = np.array(self.attns)
+        mlp_array = np.array(self.mlp)
+
+        for layer_idx in range(self.num_layers):
+            z2z_layer = np.array(z2z_results[layer_idx])
+            attn_layer = attns_array[layer_idx]
+            mlp_layer = mlp_array[layer_idx]
+
+            expected = np.zeros((self.num_tokens, self.num_tokens))
+            for j in range(self.num_tokens):
+                w_mlp = nrm(mlp_layer[j, :])
+                for h in range(self.num_heads):
+                    expected[:, j] += nrm(attn_layer[h, :, j]) * w_mlp[h]
+
+            np.testing.assert_allclose(
+                z2z_layer, expected, rtol=1e-5, atol=1e-5,
+                err_msg=f"Layer {layer_idx}: affine 合成が論文の式と一致しません",
+            )
+
+    def test_z2z_affine_columns_sum_to_one(self):
+        """affine の列は総和 1（Eq. layer-decomp-hat の直後で述べている性質）。"""
+        z2z_results = compute_z2z_from_att_mlp(self.attns, self.mlp)
+        for layer_idx in range(self.num_layers):
+            col_sums = np.array(z2z_results[layer_idx]).sum(axis=0)
+            np.testing.assert_allclose(
+                col_sums, np.ones_like(col_sums), rtol=1e-4, atol=1e-4,
+                err_msg=f"Layer {layer_idx}: affine 合成の列和が 1 ではありません",
+            )
+
+    def test_z2z_unknown_mode_raises(self):
+        with self.assertRaises(ValueError):
+            compute_z2z_from_att_mlp(self.attns, self.mlp, mode="bogus")
+
     def test_z2z_shape(self):
         """出力形状の検証"""
         z2z_results = compute_z2z_from_att_mlp(self.attns, self.mlp)

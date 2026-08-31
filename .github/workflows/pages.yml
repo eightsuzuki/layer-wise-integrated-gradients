@@ -9,6 +9,7 @@ on:
       - "scripts/build_index_html.py"
       - "scripts/build_demo_html.py"
       - "lig/viz/**"
+      - "examples/paper_demo/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -30,6 +31,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      # The site builders import lig.viz, which needs numpy; without this the
+      # job fails at import time.
+      - name: Install package
+        run: pip install -e .
 
       - name: Build site HTML
         run: |

@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from utils.calculations.ig.z2z.compose_att_mlp import normalize_ig_column_to_affine
 from utils.reproduce.ptb_loader import ptb_cache_root
 
 _BASE = "steps32_bert-base-uncased_maxlen128_z_to_z"
@@ -170,20 +171,56 @@ def resolve_composed_dir(composed_base: Path, suffix: str) -> Path | None:
     return None
 
 
-def load_z2z(path: Path) -> np.ndarray:
+def load_z2z(path: Path) -> tuple[np.ndarray, list[str]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     z2z = data.get("z2z")
     if z2z is None:
         raise KeyError(f"no 'z2z' in {path}")
-    return np.asarray(z2z, dtype=np.float64)
+    return np.asarray(z2z, dtype=np.float64), list(data.get("tokens", []))
+
+
+def build_sub_to_word(sub_tokens: list[str], word_tokens: list[str]) -> dict[int, int] | None:
+    """Map each subword index to its word index, or None if the two do not spell
+    the same string. Layer-direct z2z is cached in subword space while the
+    composed side is in word space, so the two must be aligned before they can
+    be compared column by column."""
+    s2w: dict[int, int] = {}
+    si = 0
+    for wi, word in enumerate(word_tokens):
+        target = word.lower()
+        buf = ""
+        while si < len(sub_tokens):
+            tok = sub_tokens[si]
+            buf += (tok[2:] if tok.startswith("##") else tok).lower()
+            s2w[si] = wi
+            si += 1
+            if buf == target:
+                break
+        if buf != target:
+            return None
+    return s2w if si == len(sub_tokens) else None
+
+
+def aggregate_to_words(mat: np.ndarray, s2w: dict[int, int], num_words: int) -> np.ndarray:
+    """Sum a [L, S, S] subword matrix into [L, W, W] -- the same operation the
+    composed side already applied when it was written in word space."""
+    n_sub = mat.shape[1]
+    proj = np.zeros((n_sub, num_words), dtype=np.float64)
+    for si, wi in s2w.items():
+        if si < n_sub:
+            proj[si, wi] = 1.0
+    return np.einsum("si,lst,tj->lij", proj, mat, proj, optimize=True)
 
 
 def compare_vectors(c_direct: np.ndarray, c_comp: np.ndarray) -> dict:
+    """Paper Eq. layer-decomp-l2: both sides are normalized to unit-sum
+    allocations first (Eq. ig-layer-norm and Eq. layer-decomp-hat), so the
+    distance compares how credit is distributed, not how large it is."""
     n = min(len(c_direct), len(c_comp))
     if n == 0:
         return {"corr": np.nan, "l2_dist": np.nan}
-    a = np.asarray(c_direct[:n], dtype=np.float64)
-    b = np.asarray(c_comp[:n], dtype=np.float64)
+    a = normalize_ig_column_to_affine(np.asarray(c_direct[:n], dtype=np.float64))
+    b = normalize_ig_column_to_affine(np.asarray(c_comp[:n], dtype=np.float64))
     with np.errstate(invalid="ignore"):
         corr = np.corrcoef(a, b)[0, 1]
     if np.isnan(corr):
@@ -205,20 +242,33 @@ def run_baseline(
         if not layer_file.exists() or not comp_file.exists():
             continue
         try:
-            z_d = load_z2z(layer_file)
-            z_c = load_z2z(comp_file)
+            z_d, tok_d = load_z2z(layer_file)
+            z_c, tok_c = load_z2z(comp_file)
         except Exception as exc:
             print(f"  sample {idx}: {exc}", file=sys.stderr)
             continue
         if np.all(z_d == 0):
             continue
+        if z_d.shape[1:] != z_c.shape[1:]:
+            # Layer-direct is cached in subword space, composed in word space.
+            # Truncating to the shorter axis would silently pair different
+            # tokens, so align explicitly and skip the sample if we cannot.
+            s2w = build_sub_to_word(tok_d, tok_c) if tok_d and tok_c else None
+            if s2w is None:
+                print(f"  sample {idx}: word alignment failed", file=sys.stderr)
+                continue
+            z_d = aggregate_to_words(z_d, s2w, len(tok_c))
         layers = min(z_d.shape[0], z_c.shape[0])
         tokens = min(z_d.shape[1], z_c.shape[1], z_d.shape[2], z_c.shape[2])
         for layer in range(layers):
             for j in range(tokens):
                 c_d = z_d[layer, :tokens, j]
                 c_c = z_c[layer, :tokens, j]
-                if np.all(c_d == 0):
+                # A column that is identically zero on either side carries no
+                # allocation: the attribution for that output token was never
+                # produced. Scoring it as a distance to the zero vector would
+                # fold a missing measurement into the mean.
+                if np.all(c_d == 0) or np.all(c_c == 0):
                     continue
                 row = compare_vectors(c_d, c_c)
                 row["sample"] = idx

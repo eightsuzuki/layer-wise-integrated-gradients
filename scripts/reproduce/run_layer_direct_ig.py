@@ -25,9 +25,12 @@ project_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(project_root))
 
 from utils.common.logging_setup import get_logger, setup_unified_logging
-from utils.common.unified_bert_model import UnifiedBertModel, load_unified_model
+# UnifiedBertModel was removed from this module; load_unified_model returns a
+# plain AutoModel. Importing the old name made this script fail at --help.
+from utils.common.unified_bert_model import load_unified_model
 from utils.calculations.ig.z2z.layer_direct_ig import compute_layer_direct_ig_all_targets
 from utils.reproduce.ptb_loader import load_ptb_dataset, require_ptb_depparse_dir, ptb_cache_root
+from utils.reproduce.device import resolve as resolve_device
 
 logger = get_logger(__name__)
 
@@ -72,7 +75,7 @@ def save_json_with_z2z(sample_file: Path, data: Dict[str, Any]) -> bool:
 
 
 def compute_direct_z2z_for_sample(
-    unified_model: UnifiedBertModel,
+    unified_model,  # AutoModel (see load_unified_model)
     tokenizer: Any,
     sample_data: Dict[str, Any],
     num_steps: int,
@@ -147,6 +150,7 @@ def run(
     ptb_data_dir: Optional[Path] = None,
     no_cache: bool = False,
     output_suffix: Optional[str] = None,
+    device: str = "auto",
 ) -> Dict[str, Any]:
     """PTB サンプル範囲で Layer 直接 z2z を計算し、JSON で保存する。"""
     ptb_data_dir = ptb_data_dir or require_ptb_depparse_dir()
@@ -167,6 +171,15 @@ def run(
     if end_sample is None:
         end_sample = num_samples - 1
     actual_end = min(end_sample, num_samples - 1)
+    if actual_end < end_sample:
+        # Reproducing Experiment A means --end-sample 1699, and the default
+        # --num-samples is 100; silently returning sentences 0-99 would look
+        # like a successful full run.
+        logger.warning(
+            "--end-sample %d exceeds the %d sentences loaded (--num-samples); "
+            "stopping at %d. Pass --num-samples %d to cover the requested range.",
+            end_sample, num_samples, actual_end, end_sample + 1,
+        )
     sample_range = list(range(start_sample, actual_end + 1))
 
     logger.info("Layer 直接 z2z 計算開始")
@@ -175,11 +188,11 @@ def run(
     logger.info("出力: %s", sample_cache_dir)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    unified_model = load_unified_model(model_name, use_lightning_trainer=False)
+    unified_model = load_unified_model(model_name)  # use_lightning_trainer is no longer a parameter
     unified_model.eval()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    unified_model.to(device)
-    logger.info("device: %s", device)
+    torch_device = resolve_device(device)
+    unified_model.to(torch_device)
+    logger.info("device: %s", torch_device)
     if not torch.cuda.is_available():
         logger.warning(
             "CUDA が利用できません。CPU で実行しています。GPU を使う場合は UV の .venv で実行してください: bash scripts/run_phase_a_uv.sh"
@@ -268,6 +281,12 @@ def main() -> None:
     parser.add_argument("--no-cache", action="store_true", help="既存ファイルを上書き")
     parser.add_argument("--output-suffix", type=str, default=None, help="出力ディレクトリ名に付与する接尾辞（再計算時に既存を上書きしない場合に e.g. OLD を指定）")
     parser.add_argument("--log-file", type=str, default=None)
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="auto",
+        help="'auto' picks the CUDA card with the most free memory (shared machines); or cuda:N / cpu",
+    )
     args = parser.parse_args()
 
     if args.log_file:
@@ -285,6 +304,7 @@ def main() -> None:
         ptb_data_dir=args.ptb_data_dir,
         no_cache=args.no_cache,
         output_suffix=args.output_suffix,
+        device=args.device,
     )
 
 

@@ -19,16 +19,18 @@ venv/
 htmlcov/
 .coverage
 
-# Experiment outputs (regenerable)
-cache/
-logs/
-results/
-tmp/
-output/
+# Experiment outputs (regenerable).
+# Leading slash matters: a bare "cache/" also matched utils/cache/, which is
+# shipped source, and silently dropped it from every clone.
+/cache/
+/logs/
+/results/
+/tmp/
+/output/
 
 # Data — PTB cannot be redistributed (see DATA.md)
-data/
-treebank_3/
+/data/
+/treebank_3/
 
 # Stanford Parser (downloaded by DATA.md scripts)
 utils/ptb_dependency/tools/stanford-parser-full-2018-10-17/

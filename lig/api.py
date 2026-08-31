@@ -173,6 +173,7 @@ def _run_explain(text: str, cfg: LIGConfig) -> Dict[str, Any]:
                     layer_idx=layer_idx,
                     target_token_idx=t_idx,
                     cfg=cfg,
+                    cached_hidden_states=hidden_states,
                 )
 
             if "mlp" in modes:
@@ -636,6 +637,7 @@ def _encoder_z2u(
     layer_idx: int,
     target_token_idx: int,
     cfg: LIGConfig,
+    cached_hidden_states: Any = None,
 ) -> Dict[str, Any]:
     """ATT z→u with L2-scalarized IG (LIG)."""
     num_heads = int(adapter.model.config.num_attention_heads)
@@ -650,6 +652,7 @@ def _encoder_z2u(
             head_idx=h_idx,
             baseline_att=cfg.baseline_att,
             num_steps=cfg.num_steps,
+            cached_hidden_states=cached_hidden_states,
         )
         heads_out[str(h_idx)] = {
             "contributions": scores,
@@ -676,12 +679,17 @@ def _att_ig_column_scores(
     head_idx: int,
     baseline_method: str,
     num_steps: int,
+    cached_hidden_states: Any = None,
 ) -> List[float]:
     # Encoder-only implementation; importing it eagerly also imports Lightning.
     from utils.calculations.ig.attention.attention_ig import (
         compute_attention_ig_global_analysis_multi_layer,
     )
 
+    # Without cached_hidden_states the callee runs a full forward pass to
+    # recover z^(l). This is the innermost call of a layer x token x head loop,
+    # so re-deriving hidden states here costs thousands of redundant forwards
+    # per sentence; the caller already has them.
     att = compute_attention_ig_global_analysis_multi_layer(
         bert_model=model,
         inputs=inputs,
@@ -691,6 +699,7 @@ def _att_ig_column_scores(
         num_steps=num_steps,
         baseline_method=baseline_method,
         input_type="z",
+        cached_hidden_states=cached_hidden_states,
     )
     return att[layer_idx]["ig_values"]
 
@@ -704,6 +713,7 @@ def _encoder_att_head_contributions(
     head_idx: int,
     baseline_att: str,
     num_steps: int,
+    cached_hidden_states: Any = None,
 ) -> List[float]:
     if baseline_att in ("itb_zero_ratio", "itb_map_ratio"):
         itb = np.asarray(
@@ -715,6 +725,7 @@ def _encoder_att_head_contributions(
                 head_idx=head_idx,
                 baseline_method="self_input_token",
                 num_steps=num_steps,
+                cached_hidden_states=cached_hidden_states,
             ),
             dtype=np.float64,
         )
@@ -728,6 +739,7 @@ def _encoder_att_head_contributions(
                     head_idx=head_idx,
                     baseline_method="zero",
                     num_steps=num_steps,
+                    cached_hidden_states=cached_hidden_states,
                 ),
                 dtype=np.float64,
             )
@@ -755,6 +767,7 @@ def _encoder_att_head_contributions(
         head_idx=head_idx,
         baseline_method=baseline_att,
         num_steps=num_steps,
+        cached_hidden_states=cached_hidden_states,
     )
 
 
