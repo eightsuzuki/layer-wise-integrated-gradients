@@ -60,7 +60,9 @@ _POST_LN_ENCODER_TYPES = frozenset(
     }
 )
 
-_PRE_LN_DECODER_TYPES = frozenset({"gpt2", "gpt_neox", "llama", "mistral", "qwen2", "gemma"})
+_PRE_LN_DECODER_TYPES = frozenset(
+    {"gpt2", "gpt_neox", "llama", "mistral", "qwen2", "qwen3", "gemma"}
+)
 # "gemma3" = multimodal checkpoints, "gemma3_text" = text-only (gemma-3-1b-it)
 _GEMMA_DECODER_TYPES = frozenset({"gemma3", "gemma3_text"})
 
@@ -311,6 +313,32 @@ def u_from_z(
 
     if boundaries.layout == BlockLayout.PRE_LN_DECODER:
         if _layer_has("self_attn", layer):
+            if boundaries.model_type == "qwen3":
+                from utils.calculations.ig.qwen3.block_forward import (
+                    create_qwen3_causal_mask,
+                    get_qwen3_model,
+                    hidden_after_attn_residual as qwen3_hidden_after_attn,
+                    qwen3_position_embeddings,
+                )
+
+                position_ids = torch.arange(
+                    z_layer.shape[1], device=z_layer.device, dtype=torch.long
+                ).unsqueeze(0)
+                pos_emb = qwen3_position_embeddings(
+                    get_qwen3_model(model), z_layer, position_ids
+                )
+                causal_mask = create_qwen3_causal_mask(
+                    z_layer.shape[1],
+                    z_layer.device,
+                    z_layer.dtype,
+                    attention_mask if attention_mask.dim() == 2 else None,
+                )
+                with torch.no_grad():
+                    u_full = qwen3_hidden_after_attn(
+                        layer, z_layer, pos_emb, causal_mask
+                    )
+                return u_full[0, target_token_idx, :].clone()
+
             from utils.calculations.ig.llama.block_forward import (
                 hidden_after_attn_residual as llama_hidden_after_attn,
                 make_position_embeddings,
@@ -371,6 +399,29 @@ def forward_block(
 
     if boundaries.layout == BlockLayout.PRE_LN_DECODER:
         if _layer_has("self_attn", layer):
+            if boundaries.model_type == "qwen3":
+                from utils.calculations.ig.qwen3.block_forward import (
+                    create_qwen3_causal_mask,
+                    forward_qwen3_block,
+                    get_qwen3_model,
+                    qwen3_position_embeddings,
+                )
+
+                qwen3 = get_qwen3_model(model)
+                position_ids = torch.arange(
+                    hidden_states.shape[1],
+                    device=hidden_states.device,
+                    dtype=torch.long,
+                ).unsqueeze(0)
+                pos_emb = qwen3_position_embeddings(qwen3, hidden_states, position_ids)
+                causal_mask = create_qwen3_causal_mask(
+                    hidden_states.shape[1],
+                    hidden_states.device,
+                    hidden_states.dtype,
+                    attention_mask if attention_mask.dim() == 2 else None,
+                )
+                return forward_qwen3_block(layer, hidden_states, pos_emb, causal_mask)
+
             from utils.calculations.ig.llama.block_forward import (
                 forward_llama_block,
                 make_position_embeddings,
@@ -438,7 +489,9 @@ def resolve_hook_modules(
         out["mlp_core"] = getattr(layer, "intermediate", None)
         out["mlp_output"] = getattr(layer, "output", None)
     elif boundaries.layout == BlockLayout.PRE_LN_DECODER:
-        out["att_core"] = getattr(layer, "attn", None)
+        out["att_core"] = getattr(
+            layer, "attn", getattr(layer, "self_attn", None)
+        )
         out["att_output"] = layer
         out["mlp_core"] = getattr(layer, "mlp", None)
         out["mlp_output"] = layer

@@ -303,9 +303,14 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
             }
 
             if "att" in modes:
+                att_description = getattr(
+                    adapter,
+                    "attention_description",
+                    "ATT IG (z -> u), causal decoder; per-head token scores",
+                )
                 target_entry["z2u"] = {
                     "baseline": cfg.baseline_att,
-                    "description": "ATT IG (z -> u), causal decoder; per-head token scores",
+                    "description": att_description,
                     "heads": {},
                 }
                 for h_idx in head_indices:
@@ -317,10 +322,14 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
                         num_steps=cfg.num_steps,
                     )
                     scores = att_result.values.tolist()
-                    target_entry["z2u"]["heads"][str(h_idx)] = {
+                    head_entry = {
                         "contributions": scores,
                         "token_l2_norm": float(np.linalg.norm(scores)),
                     }
+                    for key in ("output_space", "output_width"):
+                        if key in att_result.verification:
+                            head_entry[key] = att_result.verification[key]
+                    target_entry["z2u"]["heads"][str(h_idx)] = head_entry
 
             if "mlp" in modes:
                 mlp_result = adapter.compute_mlp_ig(
@@ -332,11 +341,17 @@ def _run_explain_decoder(text: str, cfg: LIGConfig, model_type: str) -> Dict[str
                 contributions = mlp_result.contributions.tolist()
                 l2_total = float(mlp_result.total)
                 ig_sum = float(mlp_result.verification.get("ig_sum", l2_total))
-                theoretical_diff = float(mlp_result.verification.get("theoretical_diff", l2_total))
+                theoretical_diff = float(
+                    mlp_result.verification.get("theoretical_diff", l2_total)
+                )
                 completeness_error = ig_sum - theoretical_diff
                 target_entry["u2z"] = {
                     "baseline": cfg.baseline_mlp,
-                    "description": "MLP IG (u -> z), post-attn u to z^(l+1), L2-scalarized",
+                    "description": getattr(
+                        adapter,
+                        "mlp_description",
+                        "MLP IG (u -> z), post-attn u to z^(l+1), L2-scalarized",
+                    ),
                     "contributions": contributions,
                     "l2_total": l2_total,
                     "completeness": {
@@ -814,6 +829,33 @@ def _compute_decoder_layer_z2z(
             z_layer=z_layer,
             layer_idx=layer_idx,
             cfg=cfg,
+        )
+    if model_type == "qwen3":
+        from utils.calculations.ig.z2z.qwen3_layer_direct_ig import (
+            compute_qwen3_layer_direct_ig_all_targets,
+        )
+
+        kwargs = {
+            "qwen3": adapter.model,
+            "z_layer": z_layer,
+            "layer_idx": layer_idx,
+            "position_ids": adapter.cache_data["position_ids"],
+            "attention_mask": adapter.cache_data["attention_mask"],
+            "num_steps": cfg.num_steps,
+        }
+        if cfg.baseline_layer == "itb_zero_ratio":
+            z_itb = compute_qwen3_layer_direct_ig_all_targets(
+                **kwargs, baseline_method="self_input_token"
+            )
+            z_zero = compute_qwen3_layer_direct_ig_all_targets(
+                **kwargs, baseline_method="zero"
+            )
+            return apply_layer_z2z_itb_zero_base_ratio(
+                z_itb[np.newaxis, ...], z_zero[np.newaxis, ...]
+            )[0]
+        return compute_qwen3_layer_direct_ig_all_targets(
+            **kwargs,
+            baseline_method=cfg.baseline_layer,  # type: ignore[arg-type]
         )
     if model_type in LLAMA_DECODER_TYPES:
         from utils.calculations.ig.z2z.llama_layer_direct_ig import (

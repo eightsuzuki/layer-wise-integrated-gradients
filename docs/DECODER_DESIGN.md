@@ -1,4 +1,4 @@
-# Decoder-only models (GPT, Llama, Gemma3, …) — design & roadmap
+# Decoder-only models (GPT, Llama, Gemma3, Qwen3, …) — design & roadmap
 
 LIG ships **encoder** support and selected **decoder** paths (`lig.explain`).
 
@@ -69,6 +69,24 @@ Llama / Mistral / Qwen2 (not yet wired): `model.layers[l].self_attn` + `mlp`.
 
 ---
 
+## Module mapping (Qwen3 dense)
+
+```
+z -> input RMSNorm -> GQA -> o_proj -> +z = u
+u -> post-attention RMSNorm -> SwiGLU MLP -> +u = z'
+```
+
+For `Qwen/Qwen3-1.7B`, `z`, `u`, and `z'` all have width 2048. The model has
+16 query heads, 8 key/value heads, `head_dim=128`, and an MLP width of 6144.
+
+Per-head ATT IG does not slice `u`. It captures pre-`o_proj` heads and applies
+the selected head's `o_proj` weight slice in residual space:
+
+```
+delta_u_h = W_o[h] @ attention_head_h
+u = z + sum_h(delta_u_h)
+```
+
 ## Public API
 
 ```python
@@ -114,6 +132,15 @@ and Gemma3 through its dedicated pre+post-LN path.
 - [x] Layer-direct IG (`z2z/gemma3_layer_direct_ig.py`)
 - [x] `lig.explain(..., model="google/gemma-3-4b-it")` via `_run_explain_gemma3`
 - [x] Text-only `gemma3_text` checkpoints (`google/gemma-3-1b-it`)
+
+### Phase 2c — Qwen3 dense ✅
+
+- [x] Dedicated `Qwen3IGAdapter` (`model_type=qwen3`)
+- [x] Explicit causal mask, RoPE, Q/K RMSNorm, and GQA
+- [x] Post-attention residual `u` boundary
+- [x] Head-specific `z -> delta_u_h` through the matching `o_proj` weight slice
+- [x] `u -> z'` RMSNorm/SwiGLU path and direct block `z -> z'` IG
+- [x] Synthetic parity/causality/completeness tests and Qwen3-1.7B smoke test
 
 ### Phase 3 — Composition & demos
 
