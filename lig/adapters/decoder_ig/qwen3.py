@@ -9,7 +9,7 @@ import torch
 from captum.attr import IntegratedGradients
 from transformers import AutoModel, AutoTokenizer
 
-from lig.adapters.decoder_ig.base import DecoderIGAdapter
+from lig.adapters.decoder_ig.base import DecoderIGAdapter, check_completeness
 from lig.adapters.decoder_ig.gpt2 import (
     ATT_ITB_MAP_RATIO,
     ATT_ITB_ZERO_RATIO,
@@ -333,11 +333,11 @@ class Qwen3IGAdapter(DecoderIGAdapter):
             return torch.norm(out - baseline_out, p=2, dim=-1)
 
         ig = IntegratedGradients(forward_fn)
-        attributions = ig.attribute(
+        attributions, convergence_delta = ig.attribute(
             inputs=z.float(),
             baselines=baseline_z.float(),
             n_steps=num_steps,
-            return_convergence_delta=False,
+            return_convergence_delta=True,
         )
         values = attributions.sum(dim=-1).squeeze(0).detach().cpu().numpy()
 
@@ -355,7 +355,13 @@ class Qwen3IGAdapter(DecoderIGAdapter):
             "theoretical_diff": theoretical_diff,
             "ig_sum": ig_sum,
             "relative_error": float(relative_error),
-            "is_valid": bool(relative_error < 0.2),
+            "captum_convergence_delta": float(
+                convergence_delta.abs().max().detach().cpu()
+            ),
+            "is_valid": check_completeness(
+                relative_error,
+                where=f"Qwen3 ATT IG (layer {layer_idx}, head {head_idx})",
+            ),
             "output_space": (
                 self.head_output_space
                 if head_idx is not None

@@ -110,6 +110,10 @@ def test_qwen3_attention_and_mlp_ig(tiny_qwen3_adapter):
     assert att.values[2] == pytest.approx(0.0, abs=1e-9)
     assert att.values[3] == pytest.approx(0.0, abs=1e-9)
     assert att.verification["output_space"] == "residual_delta"
+    assert "captum_convergence_delta" in att.verification
+    assert att.verification["is_valid"] == (
+        att.verification["relative_error"] < 0.02
+    )
     assert mlp.contributions.shape == (adapter.hidden_size,)
     assert mlp.per_head.size == 0
     assert mlp.verification["per_head_available"] is False
