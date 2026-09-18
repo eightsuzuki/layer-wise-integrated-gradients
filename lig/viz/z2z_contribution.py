@@ -494,7 +494,7 @@ def create_interactive_visualization(
                         "dataUrl": entry["data_url"],
                         "descriptionHtml": entry.get("description_html", ""),
                     }
-                    if entry.get("data_url")
+                    if entry.get("data_url") and "z2z_data" not in entry
                     else {
                         "z2zData": compact_z2z_matrix(entry["z2z_data"]),
                         "tokens": entry["tokens"],
